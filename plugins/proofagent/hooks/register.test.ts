@@ -109,8 +109,9 @@ test("uses a ProofAgent connector the user already signed in to when the plugin'
   on('mcp.call', (_, e) => {
     seen.servers.push(e.server)
     if (e.server !== 'proofagent') throw new Error('no such server')
+    // As Claude's MCP client hands it over: the JSON in a text block, no structured field
     const r = JSON.parse(nano(JSON.stringify({ params: { name: e.tool, arguments: e.args ?? {} } })).text).result
-    return { value: { content: [], isError: false, structuredContent: r.structuredContent } }
+    return { value: { content: [{ type: 'text', text: JSON.stringify(r.structuredContent) }], isError: false } }
   })
   on('ui.toast', () => ({ value: undefined }))
   on('ui.status', () => ({ value: undefined }))
