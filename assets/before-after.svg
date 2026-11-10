@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="300" viewBox="0 0 900 300" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="15">
+  <rect width="900" height="300" rx="14" fill="#f8fafc"/>
+  <!-- left: what you type -->
+  <rect x="20" y="20" width="415" height="260" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="40" y="52" font-weight="700" fill="#0f172a">What you type</text>
+  <text x="40" y="74" font-size="12" fill="#64748b">and what you see on your screen</text>
+  <text x="40" y="112" fill="#0f172a">Send a payment reminder to</text>
+  <text x="40" y="136" fill="#0f172a"><tspan font-weight="700">Daniel Kim</tspan> (<tspan font-weight="700">daniel.kim@example.org</tspan>,</text>
+  <text x="40" y="160" fill="#0f172a"><tspan font-weight="700">+44 20 7946 0958</tspan>) for the invoice paid</text>
+  <text x="40" y="184" fill="#0f172a">from IBAN <tspan font-weight="700">GB33 BUKB 2020 1555 5555 55</tspan>.</text>
+  <rect x="40" y="214" width="375" height="44" rx="8" fill="#f1f5f9"/>
+  <text x="52" y="241" font-size="11.5" fill="#334155">proofagent: masked first name, last name, email, phone, iban</text>
+
+  <path d="M440 150 h20" stroke="#14b8a6" stroke-width="3"/><path d="M458 142 l10 8 l-10 8 z" fill="#14b8a6"/>
+
+  <!-- right: what Claude sees (brackets written as &#91; &#93; so the plugin leaves them as text) -->
+  <rect x="475" y="20" width="405" height="260" rx="10" fill="#0b0f14"/>
+  <text x="495" y="52" font-weight="700" fill="#f8fafc">What Claude sees</text>
+  <text x="495" y="74" font-size="12" fill="#94a3b8">the real values never leave your machine</text>
+  <text x="495" y="112" fill="#e2e8f0">Send a payment reminder to</text>
+  <text x="495" y="136" fill="#5eead4" font-family="ui-monospace, Menlo, monospace" font-size="13">&#91;PERSON:FIRST_NAME#1&#93; &#91;PERSON:LAST_NAME#1&#93;</text>
+  <text x="495" y="160" fill="#e2e8f0">(<tspan fill="#5eead4" font-family="ui-monospace, Menlo, monospace" font-size="13">&#91;CONTACT:EMAIL#1&#93;</tspan>, <tspan fill="#5eead4" font-family="ui-monospace, Menlo, monospace" font-size="13">&#91;CONTACT:PHONE#1&#93;</tspan>)</text>
+  <text x="495" y="184" fill="#e2e8f0">for the invoice paid from IBAN</text>
+  <text x="495" y="208" fill="#5eead4" font-family="ui-monospace, Menlo, monospace" font-size="13">&#91;BANK_FINANCIAL:IBAN#1&#93;<tspan fill="#e2e8f0" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="15">.</tspan></text>
+  <text x="495" y="252" font-size="12" fill="#94a3b8">Claude writes with these; the real values are filled</text>
+  <text x="495" y="268" font-size="12" fill="#94a3b8">back in on your screen and when a tool runs.</text>
+</svg>

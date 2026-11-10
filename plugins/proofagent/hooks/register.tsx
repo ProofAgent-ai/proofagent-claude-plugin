@@ -91,7 +91,8 @@ export const register: Register = (on, options) => {
   let byValue: Record<string, string> = {}
   let counter: Record<string, number> = {}
 
-  const statusText = () => (paused ? 'paused' : `on (${strict ? 'strict' : 'warn'})`) // Claude Code shows the plugin name before it
+  let last = '' // what happened to the last message, kept on the status line so a missed pop-up never leaves you guessing
+  const statusText = () => (paused ? 'paused' : `on (${strict ? 'strict' : 'warn'})${last ? ` · ${last}` : ''}`) // Claude Code shows the plugin name before it
 
   on('session.start', async ($, e, next) => {
     byToken = {}; byValue = {}; counter = {}
@@ -181,10 +182,18 @@ export const register: Register = (on, options) => {
     const t = e.text.slice(0, 20_000)
     const [d, scan] = await Promise.all([call($, c, 'check_user_message', { text: t }),
       call($, c, 'scan_text', { text: t, use_case: 'chat_user_protection' })])
-    if (!d && !scan) return next(e)
+    if (!d && !scan) {
+      last = 'not checked'
+      $.ui.status(statusText())
+      $.ui.toast('could not reach ProofAgent: this message was not checked')
+      return next(e)
+    }
     const text = maskSpans(t, scan?.findings) + e.text.slice(20_000)
     const k = text === e.text ? [] : kinds(text)
     const notes = [k.length ? `masked ${k.join(', ')}` : '', risky(d) && hasRisk(d) ? `risk: ${riskText(d)}` : ''].filter(Boolean)
+    const masked = text === e.text ? 0 : (text.match(TOKEN) ?? []).length
+    last = risky(d) && hasRisk(d) ? '⚠ risk' : masked ? `masked ${masked}` : 'checked'
+    $.ui.status(statusText())
     if (!notes.length) return next(e)
     show($, { where: 'your message', masked: k, risks: risky(d) && hasRisk(d) ? riskText(d).split(', ') : [] })
     const context = [...(e.context ?? [])]

@@ -38,11 +38,9 @@ No key to copy. **In Claude Code**, send these one at a time, then sign in as in
 
 ## In the Claude app
 
-Claude wrote this email with placeholders only. On your screen it shows the real name, email, card and phone, and a notice says what was masked:
+<p align="center"><img src="https://raw.githubusercontent.com/ProofAgent-ai/proofagent-claude-plugin/main/assets/before-after.svg" alt="What you type, with real personal data, next to what Claude sees: placeholders only" width="100%"></p>
 
-<p align="center"><img src="https://raw.githubusercontent.com/ProofAgent-ai/proofagent-claude-plugin/main/assets/screenshot-masked-email.png" alt="An email drafted by Claude, shown with real values on screen, with the ProofAgent masking notice" width="80%"></p>
-
-The status line shows ProofAgent is on:
+A notice says what was masked, and the status line shows ProofAgent is on:
 
 <p align="center"><img src="https://raw.githubusercontent.com/ProofAgent-ai/proofagent-claude-plugin/main/assets/screenshot-notice.png" alt="ProofAgent notice and status line in the Claude app" width="80%"></p>
 
@@ -84,6 +82,8 @@ Passport numbers and cities are flagged but not masked by default; your organiza
 | Risky message from you | Notice, goes on | Notice, goes on |
 | Risky action (send, delete, pay, outside recipient) | Notice, **runs** | **Stopped** before it runs |
 | Best for | Everyday work | Teams handling customer or patient data |
+
+The status line always shows what happened to your last message: `on (warn) · masked 5`, `· checked` (nothing found), `· ⚠ risk`, or `· not checked` (ProofAgent could not be reached; the message went through as typed).
 
 Change it in the plugin's settings (`/plugin configure proofagent@proofagent`). A guardrail key there is optional, for servers and CI. Pause with `/proofagent off`, resume with `/proofagent on`.
 
