@@ -36,6 +36,16 @@ No key to copy. **In Claude Code**, send these one at a time, then sign in as in
 - **Real values back, on your machine.** When Claude writes a file or runs a command, the real values are filled in. On your screen, replies show the real values too.
 - **AI risks flagged.** Prompt injection, jailbreaks and data leaving, in one short notice.
 
+## In the Claude app
+
+Claude wrote this email with placeholders only. On your screen it shows the real name, email, card and phone, and a notice says what was masked:
+
+<p align="center"><img src="assets/screenshot-masked-email.png" alt="An email drafted by Claude, shown with real values on screen, with the ProofAgent masking notice" width="80%"></p>
+
+The status line shows ProofAgent is on:
+
+<p align="center"><img src="assets/screenshot-notice.png" alt="ProofAgent notice and status line in the Claude app" width="80%"></p>
+
 ## What gets masked
 
 | Data | You type | Claude sees |
