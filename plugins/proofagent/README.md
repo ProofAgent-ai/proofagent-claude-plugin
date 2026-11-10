@@ -18,6 +18,8 @@
 2. Sign in: open the **proofagent** connector and click **Connect** (in Claude Code: `/mcp` › proofagent › Authenticate).
 3. Click **Approve** on the ProofAgent screen. Done: the status line shows `proofagent on (warn)`.
 
+> Already added ProofAgent as a connector on claude.ai? Then you are already signed in: the plugin uses that connection, its own connector shows **Not added** with a greyed-out **Connect**, and there is nothing more to do.
+
 No key to copy. **In Claude Code**, send these one at a time, then sign in as in step 2:
 
 ```
