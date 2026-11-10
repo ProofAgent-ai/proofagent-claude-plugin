@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "proofagent": {
+      "type": "http",
+      "url": "https://nano.proofagent.ai/mcp"
+    }
+  }
+}

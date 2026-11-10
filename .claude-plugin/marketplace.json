@@ -1,0 +1,27 @@
+{
+  "name": "proofagent",
+  "owner": {
+    "name": "ProofAgent",
+    "url": "https://proofagent.ai"
+  },
+  "metadata": {
+    "description": "ProofAgent guardrails for Claude Code: personal data protection, prompt-injection defence and policy checks before actions."
+  },
+  "plugins": [
+    {
+      "name": "proofagent",
+      "source": "./plugins/proofagent",
+      "description": "Keep your private data private in Claude Code: ProofAgent masks personal data before Claude sees it (real values are filled back in on your machine when a tool runs) and tells you about risks in prompts, actions and tool results.",
+      "version": "1.0.0",
+      "category": "security",
+      "keywords": [
+        "privacy",
+        "pii",
+        "guardrail",
+        "prompt-injection",
+        "security",
+        "compliance"
+      ]
+    }
+  ]
+}
