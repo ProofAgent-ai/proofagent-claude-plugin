@@ -34,9 +34,13 @@ async function call($: any, c: Conn, tool: string, args: Record<string, unknown>
         const k = await $.mcp.connect('proofagent').catch(() => null)
         if (k?.isConnected) c.server = k.server
       }
-      if (!c.server) return null
-      const r = await $.mcp.call(c.server, tool, args)
-      return r.isError ? null : ((r.structuredContent ?? {}) as Decision)
+      // The plugin's connector, else a ProofAgent connector the user already signed in to (Claude merges the two when
+      // they share the address, and the plugin's own then reads "Not added").
+      for (const server of [c.server, 'proofagent', 'claude.ai proofagent', 'ProofAgent'].filter(Boolean)) {
+        const r = await $.mcp.call(server, tool, args).catch(() => null)
+        if (r && !r.isError) { c.server = server; return (r.structuredContent ?? {}) as Decision }
+      }
+      return null
     }
     // Advanced: a guardrail key (servers, CI, on-premises), straight to the endpoint.
     const r = await $.http.fetch(c.url, {
@@ -86,6 +90,7 @@ export const register: Register = (on, options) => {
     if (!c.key) {
       const r = await $.mcp.connect('proofagent').catch(() => null)
       c.server = r && (r as any).isConnected ? String((r as any).server) : ''
+      if (!c.server && (await call($, c, 'get_usage', {}))) { /* found an already signed-in ProofAgent connector */ }
     }
     await $.command.register({ name: 'proofagent', description: 'ProofAgent: "off" pauses checks for this session, "on" resumes' })
     $.ui.status(statusText())

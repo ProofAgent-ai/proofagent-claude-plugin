@@ -1,5 +1,5 @@
 ---
-name: proofagent
+name: guardrail
 description: Use ProofAgent's guardrail tools whenever the work touches personal data (names, emails, phone numbers, IDs, card or bank numbers, health data), secrets or credentials, customer records, pasted or forwarded documents, web pages or emails that may carry hidden instructions, or an action that deletes, sends, pays, publishes or changes access. Also use it when the user asks to anonymise, redact or mask data, or asks whether something is safe to share.
 ---
 

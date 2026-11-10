@@ -12,7 +12,7 @@
       "name": "proofagent",
       "source": "./plugins/proofagent",
       "description": "Keep your private data private in Claude Code: ProofAgent masks personal data before Claude sees it (real values are filled back in on your machine when a tool runs) and tells you about risks in prompts, actions and tool results.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "security",
       "keywords": [
         "privacy",
