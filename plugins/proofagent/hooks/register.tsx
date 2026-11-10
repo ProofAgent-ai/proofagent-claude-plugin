@@ -15,7 +15,7 @@ import type { Register } from 'claude-code'
 
 type Decision = { action?: string; reason?: string; use_this?: unknown; findings?: Finding[] }
 type Finding = { kind?: string; family?: string; subfamily?: string; start?: number; end?: number; action?: string }
-type Conn = { url: string; key: string }
+type Conn = { url: string; key: string; server: string }
 
 const TOKEN = /\[[A-Z][A-Z_]*(?::[A-Z][A-Z_]*)?#\d+\]/g
 // Read-only tools: their input is not an action, so it needs no policy check (their results are still checked).
@@ -27,8 +27,18 @@ const SAFE_BASH = /^\s*(ls|pwd|cat|head|tail|wc|echo|git (status|diff|log|show|b
 const ENGINE_FIELDS = new Set(['tool', 'tool_use_id', 'agentId', 'isReadOnly'])
 
 async function call($: any, c: Conn, tool: string, args: Record<string, unknown>): Promise<Decision | null> {
-  if (!c.key) return null
   try {
+    if (!c.key) {
+      // Default: the plugin's own ProofAgent connector, signed in with the ProofAgent Approve screen (no key to paste).
+      if (!c.server) { // signed in after the session started: connect now
+        const k = await $.mcp.connect('proofagent').catch(() => null)
+        if (k?.isConnected) c.server = k.server
+      }
+      if (!c.server) return null
+      const r = await $.mcp.call(c.server, tool, args)
+      return r.isError ? null : ((r.structuredContent ?? {}) as Decision)
+    }
+    // Advanced: a guardrail key (servers, CI, on-premises), straight to the endpoint.
     const r = await $.http.fetch(c.url, {
       method: 'POST',
       headers: { Authorization: `Bearer ${c.key}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
@@ -62,18 +72,21 @@ function show($: any, n: { where: string; masked: string[]; risks: string[] }): 
 }
 
 export const register: Register = (on, options) => {
-  const c: Conn = { url: String(options.nano_url || 'https://nano.proofagent.ai').replace(/\/$/, '') + '/mcp', key: String(options.nano_key || '') }
+  const c: Conn = { url: String(options.nano_url || 'https://nano.proofagent.ai').replace(/\/$/, '') + '/mcp', key: String(options.nano_key || ''), server: '' }
   const strict = options.mode === 'strict'
   let paused = false
   let byToken: Record<string, string> = {}
   let byValue: Record<string, string> = {}
   let counter: Record<string, number> = {}
 
-  const statusText = () => (!c.key ? 'add your key (/plugin)' : paused ? 'paused' : `on (${strict ? 'strict' : 'warn'})`) // Claude Code shows the plugin name before it
+  const statusText = () => (!c.key && !c.server ? 'sign in: /mcp › proofagent › Authenticate' : paused ? 'paused' : `on (${strict ? 'strict' : 'warn'})`) // Claude Code shows the plugin name before it
 
   on('session.start', async ($, e, next) => {
     byToken = {}; byValue = {}; counter = {}
-    if (!c.key && options.key_file) c.key = (await $.fs.read(String(options.key_file)).catch(() => '')).trim()
+    if (!c.key) {
+      const r = await $.mcp.connect('proofagent').catch(() => null)
+      c.server = r && (r as any).isConnected ? String((r as any).server) : ''
+    }
     await $.command.register({ name: 'proofagent', description: 'ProofAgent: "off" pauses checks for this session, "on" resumes' })
     $.ui.status(statusText())
     return next(e)

@@ -81,3 +81,24 @@ test('warn mode lets a risky action run with a notice; /proofagent off pauses ev
   await $.tool.call({ tool: 'Bash', command: 'python send_email.py --to x@proton.me' })
   expect(seen.fetches).toBe(before)
 })
+
+test('with no key, checks go through the ProofAgent connector sign-in', { options: {} }, async ($, on) => {
+  const seen: { prompt?: string; mcpCalls: string[] } = { mcpCalls: [] }
+  on('mcp.connect', () => ({ value: { isConnected: true, server: 'plugin:proofagent:proofagent' } }))
+  on('mcp.call', (_, e) => {
+    seen.mcpCalls.push(`${e.server} ${e.tool}`)
+    const r = JSON.parse(nano(JSON.stringify({ params: { name: e.tool, arguments: e.args } })).text).result
+    return { value: { content: [], isError: false, structuredContent: r.structuredContent } }
+  })
+  on('http.fetch', () => { throw new Error('no key: the plugin must not call the endpoint directly') })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.status', () => ({ value: undefined }))
+  on('command.register', () => ({ value: { command: 'proofagent' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('prompt.submit', (_, e) => { seen.prompt = e.text; return { text: e.text } })
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
+  expect(seen.prompt).toBe('Call [PERSON:FIRST_NAME#1] at [CONTACT:EMAIL#1]')
+  expect(seen.mcpCalls.some((c) => c.endsWith('scan_text'))).toBe(true)
+})

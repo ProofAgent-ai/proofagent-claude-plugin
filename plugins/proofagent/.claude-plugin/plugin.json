@@ -1,6 +1,6 @@
 {
   "name": "proofagent",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Keep your private data private in Claude Code: ProofAgent masks personal data before Claude sees it (real values are filled back in on your machine when a tool runs) and tells you about risks in prompts, actions and tool results.",
   "author": {
     "name": "ProofAgent",
@@ -19,28 +19,16 @@
   "userConfig": {
     "nano_key": {
       "type": "string",
-      "title": "ProofAgent guardrail key",
-      "description": "From app.proofagent.ai > API keys (starts with pa_nano_)",
+      "title": "Guardrail key (optional)",
+      "description": "Leave empty: ProofAgent signs you in with its Approve screen. A key is only for servers or CI.",
       "sensitive": true,
       "required": false
     },
     "nano_url": {
       "type": "string",
-      "title": "ProofAgent endpoint",
+      "title": "Endpoint (optional)",
       "description": "Leave as is unless you run ProofAgent on your own servers",
       "default": "https://nano.proofagent.ai"
-    },
-    "key_file": {
-      "type": "string",
-      "title": "Key file (optional)",
-      "description": "Path to a file holding the key, instead of pasting it",
-      "default": ""
-    },
-    "fail_closed": {
-      "type": "boolean",
-      "title": "Block when ProofAgent is unreachable",
-      "description": "Off: continue without a check and warn",
-      "default": false
     },
     "mode": {
       "type": "string",
