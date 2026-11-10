@@ -80,7 +80,7 @@ function show($: any, n: { where: string; masked: string[]; risks: string[] }): 
     data.length ? `⚠ Data risk: ${data.join(', ')}` : '',
     other.length ? `⚠ Risk: ${other.join(', ')}` : '',
   ].filter(Boolean)
-  if (parts.length) $.ui.toast(`ProofAgent (${n.where}): ${parts.join(' · ')}`)
+  if (parts.length) $.ui.toast(`${parts.join(' · ')} (${n.where})`) // Claude Code shows the plugin name before it
 }
 
 export const register: Register = (on, options) => {
@@ -168,7 +168,7 @@ export const register: Register = (on, options) => {
     typeof x === 'string' ? restore(x) : Array.isArray(x) ? x.map(restoreDeep)
       : x && typeof x === 'object' ? Object.fromEntries(Object.entries(x).map(([k, y]) => [k, restoreDeep(y)])) : x
   const maskedOf = (d: Decision | null) => (typeof d?.use_this === 'string' ? d.use_this : null)
-  const kinds = (s: string) => [...new Set((s.match(TOKEN) ?? []).map((t) => t.slice(1, t.indexOf('#')).split(':').pop()!.toLowerCase()))]
+  const kinds = (s: string) => [...new Set((s.match(TOKEN) ?? []).map((t) => t.slice(1, t.indexOf('#')).split(':').pop()!.toLowerCase().replace(/_/g, ' ')))]
   // The risks worth a notice: Nano's reason minus the personal-data part (that is masked, not a risk to warn about).
   const riskText = (d: Decision | null) => (String(d?.reason ?? '').match(/Risks: ([^.]*)/)?.[1] ?? '').split(', ')
     .filter((r) => r && !/PII|personal data/i.test(r)).join(', ')
