@@ -33,6 +33,21 @@ function decisionOf(r: { structuredContent?: unknown; content?: unknown }): Deci
   try { return JSON.parse(text) as Decision } catch { return {} }
 }
 
+// Servers that offer ProofAgent's tools, whatever they are called: a server with check_user_message, scan_text and
+// check_before_execute. Tool names are mcp__<server>__<tool>; $.mcp.call takes that server spelling.
+const SIGNATURE = ['check_user_message', 'scan_text', 'check_before_execute']
+async function findServers($: any): Promise<string[]> {
+  const tools: { name: string; mcp?: boolean }[] = await $.tool.list().catch(() => [])
+  const by = new Map<string, Set<string>>()
+  for (const t of tools) {
+    const m = t.mcp !== false && /^mcp__(.+)__([a-z_]+)$/.exec(t.name)
+    if (!m) continue
+    if (!by.has(m[1])) by.set(m[1], new Set())
+    by.get(m[1])!.add(m[2])
+  }
+  return [...by].filter(([, s]) => SIGNATURE.every(n => s.has(n))).map(([server]) => server)
+}
+
 async function call($: any, c: Conn, tool: string, args: Record<string, unknown>): Promise<Decision | null> {
   try {
     if (!c.key) {
@@ -43,10 +58,21 @@ async function call($: any, c: Conn, tool: string, args: Record<string, unknown>
       }
       // The plugin's connector, else a ProofAgent connector the user already signed in to (Claude merges the two when
       // they share the address, and the plugin's own then reads "Not added").
-      for (const server of [c.server, 'proofagent', 'claude.ai proofagent', 'ProofAgent'].filter(Boolean)) {
+      const tryServer = async (server: string) => {
         const r = await $.mcp.call(server, tool, args).catch((err: unknown) => { $.ui.log(`proofagent: ${server} ${tool} failed: ${String(err)}`, { to: 'debug' }); return null })
         if (r && !r.isError) { c.server = server; return decisionOf(r) }
         if (r?.isError) $.ui.log(`proofagent: ${server} ${tool} error: ${JSON.stringify(r.content).slice(0, 300)}`, { to: 'debug' })
+        return null
+      }
+      for (const server of [c.server, 'proofagent', 'claude.ai proofagent', 'ProofAgent'].filter(Boolean)) {
+        const d = await tryServer(server)
+        if (d) return d
+      }
+      // A ProofAgent connector under any other name (claude.ai connectors can be listed by an id): find it by its tools.
+      for (const server of await findServers($)) {
+        if (server === c.server) continue
+        const d = await tryServer(server)
+        if (d) return d
       }
       return null
     }

@@ -123,3 +123,28 @@ test("uses a ProofAgent connector the user already signed in to when the plugin'
   await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
   expect(seen.prompt).toBe('Call [PERSON:FIRST_NAME#1] at [CONTACT:EMAIL#1]')
 })
+
+test('finds a ProofAgent connector listed under any name (a claude.ai connector id) by its tools', { options: {} }, async ($, on) => {
+  const seen: { prompt?: string } = {}
+  const ID = 'e92ed387-ae88-4969-8a7f-4148dda76431'
+  on('mcp.connect', () => ({ value: { isConnected: false, reason: 'auth', message: 'Needs sign-in' } }))
+  on('tool.list', () => ({ value: [
+    { name: 'Read', description: '', mcp: false },
+    { name: 'mcp__other__scan_text', description: '', mcp: true },
+    ...['check_user_message', 'scan_text', 'check_before_execute'].map((t) => ({ name: `mcp__${ID}__${t}`, description: '', mcp: true })),
+  ] }))
+  on('mcp.call', (_, e) => {
+    if (e.server !== ID) throw new Error('no such server')
+    const r = JSON.parse(nano(JSON.stringify({ params: { name: e.tool, arguments: e.args ?? {} } })).text).result
+    return { value: { content: [{ type: 'text', text: JSON.stringify(r.structuredContent) }], isError: false } }
+  })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.status', () => ({ value: undefined }))
+  on('command.register', () => ({ value: { command: 'proofagent' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('prompt.submit', (_, e) => { seen.prompt = e.text; return { text: e.text } })
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
+  expect(seen.prompt).toBe('Call [PERSON:FIRST_NAME#1] at [CONTACT:EMAIL#1]')
+})
