@@ -96,3 +96,23 @@ Change it in the plugin's settings (`/plugin configure proofagent@proofagent`). 
 ## License
 
 Apache-2.0 · © ProofAgent
+
+## Everyday skills
+
+Just ask Claude in plain words; the matching skill runs and ProofAgent does the checking.
+
+| Skill | Ask | |
+|---|---|---|
+| Scam Radar | "Is this message a scam?" | Everyone |
+| Safe to Share | "Make this safe to send" | Everyone |
+| Post Guard | "Can I post this caption or photo?" | Creators |
+| Deal Check | "Is this brand deal real?" | Creators |
+| Family Shield | "Is this message safe for my kid?" | Parents |
+| Invoice Shield | "Is this invoice legit?" | Finance, small business |
+| Pay Pause | Automatic before any payment | Finance |
+| Patient Privacy | "Remove patient details from this note" | Healthcare |
+| Client Cloak | "Anonymise my client's details" | Architects, legal, consultants |
+| Privacy X-Ray | "What's sensitive in this file?" | Everyone |
+| Safety Score | "What did ProofAgent protect this month?" | Everyone (free) |
+
+ProofAgent helps you spot risks; it doesn't guarantee to catch everything, and it isn't legal or compliance advice.
