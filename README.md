@@ -103,9 +103,9 @@ Passport numbers and cities are flagged but not masked by default; your organiza
 | Risky action (send, delete, pay, outside recipient) | Notice, **runs** | **Stopped** before it runs |
 | Best for | Everyday work | Teams handling customer or patient data |
 
-The status line always shows what happened to your last message: `on (warn) · masked 5`, `· checked` (nothing found), `· ⚠ risk`, or `· not checked` (ProofAgent could not be reached; the message went through as typed).
+The status line shows `proofagent on` or `proofagent off`. What was masked or risky appears in a notice for each message.
 
-Change it in the plugin's settings (`/plugin configure proofagent@proofagent`). A guardrail key there is optional, for servers and CI. Pause with `/proofagent off`, resume with `/proofagent on`.
+Change it in the plugin's settings (`/plugin configure proofagent@proofagent`). A guardrail key there is optional, for servers and CI. Pause with `/proofagent off` (shows `proofagent off`), resume with `/proofagent on`.
 
 ## Privacy
 

@@ -50,7 +50,25 @@ async function findServers($: any): Promise<string[]> {
 
 async function call($: any, c: Conn, tool: string, args: Record<string, unknown>): Promise<Decision | null> {
   try {
-    if (!c.key) {
+    if (c.key) {
+      // Advanced: a guardrail key (servers, CI, on-premises), straight to the endpoint. If it fails (wrong or
+      // expired key), fall back to a signed-in ProofAgent connector below.
+      const d = await (async () => {
+        const r = await $.http.fetch(c.url, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${c.key}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: args } }),
+        })
+        let raw = r.text
+        if (raw.startsWith('event:') || raw.includes('\ndata:')) raw = raw.split('\n').find((l: string) => l.startsWith('data:'))?.slice(5) ?? '{}'
+        const res = JSON.parse(raw).result
+        if (!r.ok || !res || res.isError) return null
+        return (res.structuredContent ?? {}) as Decision
+      })().catch(() => null)
+      if (d) return d
+      $.ui.log('proofagent: guardrail key failed, trying the ProofAgent connector', { to: 'debug' })
+    }
+    {
       // Default: the plugin's own ProofAgent connector, signed in with the ProofAgent Approve screen (no key to paste).
       if (!c.server) { // signed in after the session started: connect now
         const k = await $.mcp.connect('proofagent').catch(() => null)
@@ -76,17 +94,6 @@ async function call($: any, c: Conn, tool: string, args: Record<string, unknown>
       }
       return null
     }
-    // Advanced: a guardrail key (servers, CI, on-premises), straight to the endpoint.
-    const r = await $.http.fetch(c.url, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${c.key}`, 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: args } }),
-    })
-    let raw = r.text
-    if (raw.startsWith('event:') || raw.includes('\ndata:')) raw = raw.split('\n').find((l: string) => l.startsWith('data:'))?.slice(5) ?? '{}'
-    const res = JSON.parse(raw).result
-    if (!r.ok || !res || res.isError) return null
-    return (res.structuredContent ?? {}) as Decision
   } catch {
     return null
   }
@@ -118,7 +125,7 @@ export const register: Register = (on, options) => {
   let counter: Record<string, number> = {}
 
   let last = '' // what happened to the last message, kept on the status line so a missed pop-up never leaves you guessing
-  const statusText = () => (paused ? 'paused' : `on (${strict ? 'strict' : 'warn'})${last ? ` · ${last}` : ''}`) // Claude Code shows the plugin name before it
+  const statusText = () => (paused ? 'off' : 'on') // the app shows the plugin name before it; risks and masking go in notices
 
   on('session.start', async ($, e, next) => {
     byToken = {}; byValue = {}; counter = {}

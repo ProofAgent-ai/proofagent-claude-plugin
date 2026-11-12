@@ -12,7 +12,7 @@
       "name": "proofagent",
       "source": "./plugins/proofagent",
       "description": "Keep your private data private in Claude: ProofAgent masks personal data before Claude sees it (real values are filled back in on your machine) and flags AI risks. Includes 11 everyday skills: Scam Radar (is this message a scam?), Safe to Share (strip private details before sending), Post Guard (check a caption or photo before posting), Deal Check (spot fake brand deals), Family Shield (kids' safety and grooming signals), Invoice Shield (fake invoices and changed bank details), Pay Pause (safety stop before payments), Patient Privacy (de-identify health notes), Client Cloak (anonymise client documents), Privacy X-Ray (find every sensitive detail) and Safety Score (what ProofAgent protected). Works in English, French and Arabic.",
-      "version": "1.2.2",
+      "version": "1.2.4",
       "category": "security",
       "keywords": [
         "privacy",

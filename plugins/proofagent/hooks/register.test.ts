@@ -148,3 +148,22 @@ test('finds a ProofAgent connector listed under any name (a claude.ai connector 
   await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
   expect(seen.prompt).toBe('Call [PERSON:FIRST_NAME#1] at [CONTACT:EMAIL#1]')
 })
+
+test('a wrong or expired guardrail key falls back to the signed-in connector', OPTIONS, async ($, on) => {
+  const seen: { prompt?: string } = {}
+  on('http.fetch', () => ({ value: { status: 401, ok: false, headers: {}, text: '{"error":"invalid key"}' } }))
+  on('mcp.connect', () => ({ value: { isConnected: true, server: 'proofagent' } }))
+  on('mcp.call', (_, e) => {
+    const r = JSON.parse(nano(JSON.stringify({ params: { name: e.tool, arguments: e.args ?? {} } })).text).result
+    return { value: { content: [], isError: false, structuredContent: r.structuredContent } }
+  })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.status', () => ({ value: undefined }))
+  on('command.register', () => ({ value: { command: 'proofagent' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('prompt.submit', (_, e) => { seen.prompt = e.text; return { text: e.text } })
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
+  expect(seen.prompt).toBe('Call [PERSON:FIRST_NAME#1] at [CONTACT:EMAIL#1]')
+})
