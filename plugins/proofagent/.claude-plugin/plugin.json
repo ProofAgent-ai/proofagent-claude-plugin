@@ -1,7 +1,7 @@
 {
   "name": "proofagent",
-  "version": "1.2.4",
-  "description": "Keep your private data private in Claude: ProofAgent masks personal data before Claude sees it (real values are filled back in on your machine) and flags AI risks. Includes 11 everyday skills: Scam Radar (is this message a scam?), Safe to Share (strip private details before sending), Post Guard (check a caption or photo before posting), Deal Check (spot fake brand deals), Family Shield (kids' safety and grooming signals), Invoice Shield (fake invoices and changed bank details), Pay Pause (safety stop before payments), Patient Privacy (de-identify health notes), Client Cloak (anonymise client documents), Privacy X-Ray (find every sensitive detail) and Safety Score (what ProofAgent protected). Works in English, French and Arabic.",
+  "version": "1.2.4-enterprise.1",
+  "description": "ProofAgent Guardrail Enterprise for Claude Code: every prompt, tool call and tool result is checked by your company's own guardrail server, under your company's policies. Personal data is masked before Claude sees it and filled back in on your machine. Nothing is sent to ProofAgent's cloud.",
   "author": {
     "name": "ProofAgent",
     "url": "https://proofagent.ai"
@@ -23,27 +23,27 @@
   ],
   "privacyPolicyUrl": "https://proofagent.ai/privacy",
   "userConfig": {
-    "nano_key": {
-      "type": "string",
-      "title": "Guardrail key (optional)",
-      "description": "Leave empty: ProofAgent signs you in with its Approve screen. A key is only for servers or CI.",
-      "sensitive": true,
-      "required": false
-    },
     "nano_url": {
       "type": "string",
-      "title": "Endpoint (optional)",
-      "description": "Leave as is unless you run ProofAgent on your own servers",
-      "default": "https://nano.proofagent.ai"
+      "title": "Your company's guardrail address",
+      "description": "From your ProofAgent invite link, for example https://guardrail.yourcompany.com",
+      "required": true
+    },
+    "nano_key": {
+      "type": "string",
+      "title": "Your personal key",
+      "description": "From your ProofAgent invite link. It identifies you and your team.",
+      "sensitive": true,
+      "required": true
     },
     "mode": {
       "type": "string",
       "title": "Mode",
-      "description": "warn: mask and notify, never block (default). strict: also stop risky actions.",
-      "default": "warn",
+      "description": "strict: stop actions your company's policy blocks (default). warn: notify only.",
+      "default": "strict",
       "options": [
-        "warn",
-        "strict"
+        "strict",
+        "warn"
       ]
     },
     "reveal_on_screen": {

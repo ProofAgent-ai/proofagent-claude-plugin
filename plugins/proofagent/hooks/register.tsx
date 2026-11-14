@@ -66,8 +66,10 @@ async function call($: any, c: Conn, tool: string, args: Record<string, unknown>
         return (res.structuredContent ?? {}) as Decision
       })().catch(() => null)
       if (d) return d
-      $.ui.log('proofagent: guardrail key failed, trying the ProofAgent connector', { to: 'debug' })
+      $.ui.log('proofagent: the company guardrail did not answer (wrong key, or the server is unreachable)', { to: 'debug' })
     }
+    // Enterprise: checks only ever go to your company's own server. No fallback to any other ProofAgent connector.
+    if (ENTERPRISE) return null
     {
       // Default: the plugin's own ProofAgent connector, signed in with the ProofAgent Approve screen (no key to paste).
       if (!c.server) { // signed in after the session started: connect now
@@ -116,8 +118,11 @@ function show($: any, n: { where: string; masked: string[]; risks: string[] }): 
   if (parts.length) $.ui.toast(`${parts.join(' · ')} (${n.where})`) // Claude Code shows the plugin name before it
 }
 
+const ENTERPRISE = true // this branch: ProofAgent Guardrail Enterprise, your company's own server
+
 export const register: Register = (on, options) => {
-  const c: Conn = { url: String(options.nano_url || 'https://nano.proofagent.ai').replace(/\/$/, '') + '/mcp', key: String(options.nano_key || ''), server: '' }
+  const configured = Boolean(String(options.nano_url || '').trim() && String(options.nano_key || '').trim())
+  const c: Conn = { url: String(options.nano_url || '').trim().replace(/\/(mcp)?\/?$/, '') + '/mcp', key: String(options.nano_key || ''), server: '' }
   const strict = options.mode === 'strict'
   let paused = false
   let byToken: Record<string, string> = {}
@@ -131,7 +136,8 @@ export const register: Register = (on, options) => {
     byToken = {}; byValue = {}; counter = {}
     // The connector is found on the first check, not here: waiting for it would hold up the session's start.
     await $.command.register({ name: 'proofagent', description: 'ProofAgent: "off" pauses checks for this session, "on" resumes' })
-    $.ui.status(statusText())
+    $.ui.status(configured ? statusText() : 'not connected')
+    if (!configured) $.ui.toast("Not connected to your company's guardrail yet. Open your ProofAgent invite link, choose Claude Code and run the command it shows.")
     return next(e)
   })
 

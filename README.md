@@ -1,3 +1,21 @@
+# ProofAgent Guardrail Enterprise for Claude Code
+
+This branch (`enterprise`) is for companies running **ProofAgent Guardrail Enterprise** on their own servers.
+Every prompt, tool call and tool result is checked by **your company's guardrail**, under your company's policies.
+Nothing is sent to ProofAgent's cloud, and there is no fallback to it.
+
+**Employees:** open your ProofAgent invite link, choose Claude Code, and run the one command it shows.
+It adds this plugin and connects it to your company's server with your personal key.
+
+**What you get**
+- Personal data is masked before Claude sees it; the real values are filled back in on your machine only.
+- Risky actions your company's policy blocks, or holds for a reviewer, are stopped (mode `strict`, the default).
+- `/proofagent` shows the status; if the plugin isn't connected yet, it tells you what to do.
+
+The cloud edition of the plugin is on the `main` branch.
+
+---
+
 <p align="center">
   <img src="assets/logo.png" alt="ProofAgent" width="88" height="88">
 </p>

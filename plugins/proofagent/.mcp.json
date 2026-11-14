@@ -2,7 +2,10 @@
   "mcpServers": {
     "proofagent": {
       "type": "http",
-      "url": "https://nano.proofagent.ai/mcp"
+      "url": "${user_config.nano_url}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${user_config.nano_key}"
+      }
     }
   }
 }

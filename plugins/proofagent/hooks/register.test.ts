@@ -18,7 +18,7 @@ function nano(body: string) {
   return { status: 200, ok: true, headers: {}, text: JSON.stringify({ jsonrpc: '2.0', id: 1, result: { structuredContent } }) }
 }
 
-const OPTIONS = { options: { nano_key: 'pa_nano_test_0000000000000000', mode: 'warn' } }
+const OPTIONS = { options: { nano_url: 'https://guardrail.acme.test', nano_key: 'peg_test_0000000000000000', mode: 'warn' } }
 
 test('masks a prompt and fills the real values into a tool call', OPTIONS, async ($, on) => {
   const seen: { prompt?: string; command?: string; toasts: string[]; sentToNano: string[] } = { toasts: [], sentToNano: [] }
@@ -82,16 +82,30 @@ test('warn mode lets a risky action run with a notice; /proofagent off pauses ev
   expect(seen.fetches).toBe(before)
 })
 
-test('with no key, checks go through the ProofAgent connector sign-in', { options: {} }, async ($, on) => {
-  const seen: { prompt?: string; mcpCalls: string[] } = { mcpCalls: [] }
-  on('mcp.connect', () => ({ value: { isConnected: true, server: 'plugin:proofagent:proofagent' } }))
-  on('mcp.call', (_, e) => {
-    seen.mcpCalls.push(`${e.server} ${e.tool}`)
-    const r = JSON.parse(nano(JSON.stringify({ params: { name: e.tool, arguments: e.args } })).text).result
-    return { value: { content: [], isError: false, structuredContent: r.structuredContent } }
-  })
-  on('http.fetch', () => { throw new Error('no key: the plugin must not call the endpoint directly') })
+test("enterprise: checks go to the company's server only, at its /mcp address", OPTIONS, async ($, on) => {
+  const urls: string[] = []
+  on('http.fetch', (_, e) => { urls.push(String(e.url)); return { value: nano(String(e.init?.body)) } })
+  on('mcp.connect', () => { throw new Error('enterprise: no other connector may be used') })
+  on('mcp.call', () => { throw new Error('enterprise: no other connector may be used') })
   on('ui.toast', () => ({ value: undefined }))
+  on('ui.status', () => ({ value: undefined }))
+  on('command.register', () => ({ value: { command: 'proofagent' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
+  expect(urls.length).toBeGreaterThan(0)
+  expect(urls.every((u) => u === 'https://guardrail.acme.test/mcp')).toBe(true)
+})
+
+test('enterprise: a wrong key or unreachable server never falls back to another ProofAgent connector', OPTIONS, async ($, on) => {
+  const seen: { prompt?: string; mcp: number; toasts: string[] } = { mcp: 0, toasts: [] }
+  on('http.fetch', () => ({ value: { status: 401, ok: false, headers: {}, text: '{"error":"unauthorized"}' } }))
+  on('mcp.connect', () => { seen.mcp++; return { value: { isConnected: true, server: 'claude.ai proofagent' } } })
+  on('mcp.call', () => { seen.mcp++; return { value: { content: [], isError: false, structuredContent: { action: 'ALLOW' } } } })
+  on('tool.list', () => { seen.mcp++; return { value: [] } })
+  on('ui.toast', (_, e) => { seen.toasts.push(String(e.text)); return { value: undefined } })
   on('ui.status', () => ({ value: undefined }))
   on('command.register', () => ({ value: { command: 'proofagent' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
@@ -99,71 +113,6 @@ test('with no key, checks go through the ProofAgent connector sign-in', { option
 
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
-  expect(seen.prompt).toBe('Call [PERSON:FIRST_NAME#1] at [CONTACT:EMAIL#1]')
-  expect(seen.mcpCalls.some((c) => c.endsWith('scan_text'))).toBe(true)
-})
-
-test("uses a ProofAgent connector the user already signed in to when the plugin's own is not added", { options: {} }, async ($, on) => {
-  const seen: { prompt?: string; servers: string[] } = { servers: [] }
-  on('mcp.connect', () => ({ value: { isConnected: false, reason: 'not-added', message: 'Not added' } }))
-  on('mcp.call', (_, e) => {
-    seen.servers.push(e.server)
-    if (e.server !== 'proofagent') throw new Error('no such server')
-    // As Claude's MCP client hands it over: the JSON in a text block, no structured field
-    const r = JSON.parse(nano(JSON.stringify({ params: { name: e.tool, arguments: e.args ?? {} } })).text).result
-    return { value: { content: [{ type: 'text', text: JSON.stringify(r.structuredContent) }], isError: false } }
-  })
-  on('ui.toast', () => ({ value: undefined }))
-  on('ui.status', () => ({ value: undefined }))
-  on('command.register', () => ({ value: { command: 'proofagent' } }))
-  on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('prompt.submit', (_, e) => { seen.prompt = e.text; return { text: e.text } })
-
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
-  expect(seen.prompt).toBe('Call [PERSON:FIRST_NAME#1] at [CONTACT:EMAIL#1]')
-})
-
-test('finds a ProofAgent connector listed under any name (a claude.ai connector id) by its tools', { options: {} }, async ($, on) => {
-  const seen: { prompt?: string } = {}
-  const ID = 'e92ed387-ae88-4969-8a7f-4148dda76431'
-  on('mcp.connect', () => ({ value: { isConnected: false, reason: 'auth', message: 'Needs sign-in' } }))
-  on('tool.list', () => ({ value: [
-    { name: 'Read', description: '', mcp: false },
-    { name: 'mcp__other__scan_text', description: '', mcp: true },
-    ...['check_user_message', 'scan_text', 'check_before_execute'].map((t) => ({ name: `mcp__${ID}__${t}`, description: '', mcp: true })),
-  ] }))
-  on('mcp.call', (_, e) => {
-    if (e.server !== ID) throw new Error('no such server')
-    const r = JSON.parse(nano(JSON.stringify({ params: { name: e.tool, arguments: e.args ?? {} } })).text).result
-    return { value: { content: [{ type: 'text', text: JSON.stringify(r.structuredContent) }], isError: false } }
-  })
-  on('ui.toast', () => ({ value: undefined }))
-  on('ui.status', () => ({ value: undefined }))
-  on('command.register', () => ({ value: { command: 'proofagent' } }))
-  on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('prompt.submit', (_, e) => { seen.prompt = e.text; return { text: e.text } })
-
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
-  expect(seen.prompt).toBe('Call [PERSON:FIRST_NAME#1] at [CONTACT:EMAIL#1]')
-})
-
-test('a wrong or expired guardrail key falls back to the signed-in connector', OPTIONS, async ($, on) => {
-  const seen: { prompt?: string } = {}
-  on('http.fetch', () => ({ value: { status: 401, ok: false, headers: {}, text: '{"error":"invalid key"}' } }))
-  on('mcp.connect', () => ({ value: { isConnected: true, server: 'proofagent' } }))
-  on('mcp.call', (_, e) => {
-    const r = JSON.parse(nano(JSON.stringify({ params: { name: e.tool, arguments: e.args ?? {} } })).text).result
-    return { value: { content: [], isError: false, structuredContent: r.structuredContent } }
-  })
-  on('ui.toast', () => ({ value: undefined }))
-  on('ui.status', () => ({ value: undefined }))
-  on('command.register', () => ({ value: { command: 'proofagent' } }))
-  on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('prompt.submit', (_, e) => { seen.prompt = e.text; return { text: e.text } })
-
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
-  expect(seen.prompt).toBe('Call [PERSON:FIRST_NAME#1] at [CONTACT:EMAIL#1]')
+  expect(seen.mcp).toBe(0)
+  expect(seen.toasts.join(' ')).toContain('not checked')
 })

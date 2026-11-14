@@ -1,18 +1,18 @@
 {
-  "name": "proofagent",
+  "name": "proofagent-enterprise",
   "owner": {
     "name": "ProofAgent",
     "url": "https://proofagent.ai"
   },
   "metadata": {
-    "description": "ProofAgent guardrails for Claude Code: personal data protection, prompt-injection defence and policy checks before actions."
+    "description": "ProofAgent Guardrail Enterprise for Claude Code: checks go to your company's own guardrail server."
   },
   "plugins": [
     {
       "name": "proofagent",
       "source": "./plugins/proofagent",
-      "description": "Keep your private data private in Claude: ProofAgent masks personal data before Claude sees it (real values are filled back in on your machine) and flags AI risks. Includes 11 everyday skills: Scam Radar (is this message a scam?), Safe to Share (strip private details before sending), Post Guard (check a caption or photo before posting), Deal Check (spot fake brand deals), Family Shield (kids' safety and grooming signals), Invoice Shield (fake invoices and changed bank details), Pay Pause (safety stop before payments), Patient Privacy (de-identify health notes), Client Cloak (anonymise client documents), Privacy X-Ray (find every sensitive detail) and Safety Score (what ProofAgent protected). Works in English, French and Arabic.",
-      "version": "1.2.4",
+      "description": "ProofAgent Guardrail Enterprise for Claude Code: every prompt, tool call and tool result is checked by your company's own guardrail server, under your company's policies. Personal data is masked before Claude sees it and filled back in on your machine. Nothing is sent to ProofAgent's cloud.",
+      "version": "1.2.4-enterprise.1",
       "category": "security",
       "keywords": [
         "privacy",
