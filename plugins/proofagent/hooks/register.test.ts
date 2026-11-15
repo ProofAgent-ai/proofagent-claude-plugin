@@ -1,4 +1,5 @@
 import { expect, test } from 'claude-code/testing'
+import { isOwnAnswer, notPersonal } from './register.tsx'
 
 // A stand-in for ProofAgent Nano: masks emails and the name "Maria", flags "ignore your rules", and holds sends.
 const EMAIL = /[\w.]+@[\w.]+\.\w+/g
@@ -166,4 +167,34 @@ test('a wrong or expired guardrail key falls back to the signed-in connector', O
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   await $.prompt.submit({ text: 'Call Maria at maria@acme.com' })
   expect(seen.prompt).toBe('Call [PERSON:FIRST_NAME#1] at [CONTACT:EMAIL#1]')
+})
+
+
+test('never masks what is not personal data: ProofAgent ids and version numbers', {}, async () => {
+  expect(notPersonal('scn_ceaa5f8dbcd84b29', 'BIOMETRIC_GENETIC', 'FACE_TEMPLATE')).toBe(true)
+  expect(notPersonal('rev_f0f4397ddd31')).toBe(true)
+  expect(notPersonal('0.3.25-0.3.26', 'NETWORK', 'IPV4')).toBe(true)
+  expect(notPersonal('1.2.4', 'NETWORK', 'IPV4')).toBe(true)
+  expect(notPersonal('10.0.12.7', 'NETWORK', 'IPV4')).toBe(false)
+  expect(notPersonal('peg_0123456789abcdef0123', 'SECRET', 'API_KEY')).toBe(false)   // keys stay masked
+})
+
+test("ProofAgent's own answers are not checked again", {}, async () => {
+  expect(isOwnAnswer('{"action":"ALLOW","use_this":"hi","scan_id":"scn_0a57cfdc4ba04a31"}')).toBe(true)
+  expect(isOwnAnswer('{"pinned":true,"expires_in_hours":24,"action":"x"}')).toBe(true)
+  expect(isOwnAnswer('{"action":"deploy","target":"prod"}')).toBe(false)
+  expect(isOwnAnswer('plain tool output')).toBe(false)
+})
+
+test('one policy check per prompt and per tool result', OPTIONS, async ($, on) => {
+  const names: string[] = []
+  on('http.fetch', (_, e) => { names.push(JSON.parse(String(e.init?.body)).params.name); return { value: nano(String(e.init?.body)) } })
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.status', () => ({ value: undefined }))
+  on('command.register', () => ({ value: { command: 'proofagent' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+  await $.session.start({ cwd: '/tmp' })
+  await $.prompt.submit({ text: 'Refactor the scan popup' })
+  expect(names).toEqual(['check_user_message'])
 })

@@ -22,6 +22,15 @@ const TOKEN = /\[[A-Z][A-Z_]*(?::[A-Z][A-Z_]*)?#\d+\]/g
 const READ_ONLY = new Set(['Read', 'Glob', 'Grep', 'LS', 'TodoWrite', 'NotebookRead', 'WebSearch', 'Task', 'TaskOutput'])
 // Technical values Nano can tag that are not personal data: masking them only gets in the way of the work.
 const TECHNICAL = new Set(['URL:FILE_PATH', 'URL:URL', 'URL:DOMAIN', 'NETWORK:HOSTNAME', 'CODE:IDENTIFIER'])
+// Never personal data: ProofAgent's own ids (scans, reviews, keys' ids), and version numbers read as IP addresses.
+const OWN_ID = /^(scn|rev|ses|asg|key|team|ten|pol)_[0-9a-f]{6,32}$/
+const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/
+export function notPersonal(value: string, family?: string, subfamily?: string): boolean {
+  const v = value.trim()
+  if (OWN_ID.test(v)) return true
+  if (family === 'NETWORK' && subfamily === 'IPV4' && !IPV4.test(v)) return true
+  return false
+}
 const SAFE_BASH = /^\s*(ls|pwd|cat|head|tail|wc|echo|git (status|diff|log|show|branch))\b/
 // Fields the engine adds to a tool call: ids, not the action. Never sent to ProofAgent (an id can look like a key).
 const ENGINE_FIELDS = new Set(['tool', 'tool_use_id', 'agentId', 'isReadOnly'])
@@ -116,6 +125,13 @@ function show($: any, n: { where: string; masked: string[]; risks: string[] }): 
   if (parts.length) $.ui.toast(`${parts.join(' · ')} (${n.where})`) // Claude Code shows the plugin name before it
 }
 
+/** A ProofAgent decision returned by its own tools (action + scan id): it is not content to check again. */
+export function isOwnAnswer(text: string): boolean {
+  const t = text.trim()
+  if (!t.startsWith('{') || !t.includes('"action"')) return false
+  try { const j = JSON.parse(t); return typeof j.action === 'string' && ('scan_id' in j || 'use_this' in j || 'pinned' in j || 'team_policy' in j) } catch { return false }
+}
+
 export const register: Register = (on, options) => {
   const c: Conn = { url: String(options.nano_url || 'https://nano.proofagent.ai').replace(/\/$/, '') + '/mcp', key: String(options.nano_key || ''), server: '' }
   const strict = options.mode === 'strict'
@@ -176,8 +192,9 @@ export const register: Register = (on, options) => {
 
   /** Mask only personal-data spans Nano found (never "injected instruction" spans: those are risks to report, not data). */
   function maskSpans(text: string, findings: Finding[] | undefined): string {
-    const spans = (findings ?? []).filter((f) => f.kind === 'span' && f.action === 'MASK' && typeof f.start === 'number' && typeof f.end === 'number'
-      && f.family && !f.family.startsWith('INJECTED') && !TECHNICAL.has(`${f.family}:${f.subfamily ?? ''}`) && f.family !== 'URL').sort((a, b) => b.start! - a.start!)
+    const spans = (findings ?? []).filter((f) => f.kind === 'span' && (f.action === 'MASK' || f.action === 'BLOCK') && typeof f.start === 'number' && typeof f.end === 'number'
+      && f.family && !f.family.startsWith('INJECTED') && !TECHNICAL.has(`${f.family}:${f.subfamily ?? ''}`) && f.family !== 'URL'
+      && !notPersonal(text.slice(f.start!, f.end!), f.family, f.subfamily)).sort((a, b) => b.start! - a.start!)
     let out = text
     let last = Infinity
     for (const f of spans) {
@@ -213,9 +230,9 @@ export const register: Register = (on, options) => {
   on('prompt.submit', async ($, e, next) => {
     if (paused || e.command || e.isMeta || !e.text.trim()) return next(e)
     const t = e.text.slice(0, 20_000)
-    const [d, scan] = await Promise.all([call($, c, 'check_user_message', { text: t }),
-      call($, c, 'scan_text', { text: t, use_case: 'chat_user_protection' })])
-    if (!d && !scan) {
+    const d = await call($, c, 'check_user_message', { text: t }) // one check, under the team's settings and policies
+    const scan = d
+    if (!d) {
       last = 'not checked'
       $.ui.status(statusText())
       $.ui.toast('could not reach ProofAgent: this message was not checked')
@@ -264,7 +281,8 @@ export const register: Register = (on, options) => {
       const text = typeof b.content === 'string' ? b.content : Array.isArray(b.content) ? b.content.map((x: any) => x.text).join('\n') : ''
       if (!text.trim()) return b
       const t = text.slice(0, 20_000)
-      const d = await call($, c, 'scan_text', { text: t, use_case: 'agent_tool_result' })
+      if (isOwnAnswer(t)) return b // a ProofAgent decision: nothing to check, and its ids are not personal data
+      const d = await call($, c, 'check_tool_result', { text: t })
       if (risky(d) && hasRisk(d)) show($, { where: 'a tool result', masked: [], risks: riskText(d).split(', ') })
       const m = maskSpans(t, d?.findings)
       if (m === t) return b
