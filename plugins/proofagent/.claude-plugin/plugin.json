@@ -1,6 +1,6 @@
 {
   "name": "proofagent",
-  "version": "1.2.4-enterprise.6",
+  "version": "1.2.4-enterprise.7",
   "description": "ProofAgent Guardrail Enterprise for Claude Code: every prompt, tool call and tool result is checked by your company's own guardrail server, under your company's policies. Personal data is masked before Claude sees it and filled back in on your machine. Nothing is sent to ProofAgent's cloud.",
   "author": {
     "name": "ProofAgent",
@@ -39,11 +39,11 @@
     "mode": {
       "type": "string",
       "title": "Mode",
-      "description": "strict: stop actions your company's policy blocks (default). warn: notify only.",
-      "default": "strict",
+      "description": "warn (default): your company's own rules are enforced (confidential subjects, restricted folders, agent safety, what agents may do); the model's risk guesses are notices. strict: every stop is enforced, and nothing goes unchecked.",
+      "default": "warn",
       "options": [
-        "strict",
-        "warn"
+        "warn",
+        "strict"
       ]
     },
     "reveal_on_screen": {

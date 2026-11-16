@@ -13,16 +13,19 @@ import type { Register } from 'claude-code'
  * The table placeholder -> real value lives only in this session's memory: Claude sees placeholders only.
  */
 
-type Decision = { action?: string; reason?: string; use_this?: unknown; findings?: Finding[]; risks?: string[]; review_id?: string; result?: { findings?: Finding[] } }
+type Decision = { action?: string; reason?: string; use_this?: unknown; findings?: Finding[]; risks?: string[]; review_id?: string; firm?: boolean; result?: { findings?: Finding[] } }
 /** The findings, wherever the server put them: at the top of the answer (this edition's server) or under `result`. */
 export const findingsOf = (d: Decision | null): Finding[] | undefined => d?.findings ?? d?.result?.findings
 type Finding = { kind?: string; family?: string; subfamily?: string; start?: number; end?: number; action?: string }
 type Conn = { url: string; key: string; server: string }
 
 const TOKEN = /\[[A-Z][A-Z_]*(?::[A-Z][A-Z_]*)?#\d+\]/g
-// Tools that touch nothing outside the session: no file, no command, no network. Everything else is checked, reads included,
-// because your company's policy can restrict folders and internal sites (a read of a restricted folder is an action too).
-const INERT = new Set(['TodoWrite', 'Task', 'TaskOutput', 'TaskCreate', 'TaskUpdate', 'TaskList', 'TaskGet', 'ExitPlanMode', 'EnterPlanMode', 'AskUserQuestion'])
+// The Claude app's own tools for running the session (task list, next-step box, sub-sessions, questions to the user, plans).
+// They are reported to your company's guardrail like every other tool, so the agent's activity is complete, but they are
+// never stopped and their answers are never changed: those answers are the app's own notes to Claude, not outside content.
+// Everything that touches files, commands, the network or a web page is not in this list and stays fully enforced.
+const APP_INTERNAL = /^(mcp__ccd_[a-z_]+__|TodoWrite$|Task(Create|Update|List|Get|Output|Stop)?$|Agent$|ToolSearch$|AskUserQuestion$|(Enter|Exit)PlanMode$|ScheduleWakeup$|SendUserFile$|ReportFindings$|Skill$|ListAgents$|SendMessage$)/
+export const isAppInternal = (tool: string): boolean => APP_INTERNAL.test(tool)
 // Technical values Nano can tag that are not personal data: masking them only gets in the way of the work.
 const TECHNICAL = new Set(['URL:FILE_PATH', 'URL:URL', 'URL:DOMAIN', 'NETWORK:HOSTNAME', 'CODE:IDENTIFIER'])
 // Never personal data: ProofAgent's own ids (scans, reviews, keys' ids), and version numbers read as IP addresses.
@@ -31,6 +34,7 @@ const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]
 export function notPersonal(value: string, family?: string, subfamily?: string): boolean {
   const v = value.trim()
   if (OWN_ID.test(v)) return true
+  if (family === 'PERSON' && /^(Claude|Claude Code|ProofAgent)$/i.test(v)) return true // the assistant and the guardrail, not a person
   if (family === 'NETWORK' && subfamily === 'IPV4' && !IPV4.test(v)) return true
   return false
 }
@@ -197,6 +201,7 @@ export const register: Register = (on, options) => {
   let sid = ''
   let saved = 0
   const ownResults = new Set<string>() // tool_use ids of ProofAgent's own skill files and tool answers
+  const toolOf = new Map<string, string>() // tool_use id -> the tool that was called, so its result is reported under its name
   const unchecked = (d: Decision | null) => !d || d.action === 'NOT_CHECKED'
   const whyNot = (d: Decision | null) => (d?.action === 'NOT_CHECKED' ? String(d.reason ?? 'the guardrail could not check this') : "your company's guardrail can't be reached")
 
@@ -316,11 +321,13 @@ export const register: Register = (on, options) => {
     }
     const text = maskText(t, d) + e.text.slice(LIMIT)
     if (Object.keys(byToken).length !== saved) { saved = Object.keys(byToken).length; await saveTable($, sid, { byToken, counter }) }
-    if (strict && risky(d)) {
+    // Strict: every stop is enforced. Warn (the default): a stop that comes from one of your company's own rules (`firm`: a policy
+    // rule, a confidential subject, what is always enforced) is enforced too; one that rests only on the model's judgement is a notice.
+    if ((strict || d!.firm) && risky(d)) {
       // Personal data the policy blocks is masked here, so it never reaches Claude: the masked message is what must comply.
       // Anything else the policy stops (an attack, a blocked subject, a rule) stops the message.
       const again = text === t ? d : await ask($, c, 'check_user_message', { text: text.slice(0, LIMIT) })
-      if (unchecked(again) || risky(again)) {
+      if (strict ? unchecked(again) || risky(again) : risky(again) && Boolean(again!.firm)) {
         const r = unchecked(again) ? d! : again!
         last = '⚠ stopped'
         $.ui.status(statusText())
@@ -356,13 +363,16 @@ export const register: Register = (on, options) => {
     }
     if (paused) return next(e)
     const action = Object.fromEntries(Object.entries(input).filter(([k]) => !ENGINE_FIELDS.has(k)))
-    if (!INERT.has(tool)) {
+    if (input.tool_use_id) { toolOf.set(String(input.tool_use_id), tool); if (toolOf.size > 2000) toolOf.clear() }
+    {
       const d = await ask($, c, 'check_before_execute', { tool, action }) // placeholders only, never the real values
-      if (unchecked(d)) {
+      if (isAppInternal(tool)) {
+        // reported, never stopped: it is recorded in the agent's activity whatever the answer
+      } else if (unchecked(d)) {
         if (strict) return { deny: `ProofAgent stopped this action: it could not be checked, because ${whyNot(d)}. Try again in a moment.` }
         $.ui.toast(`could not reach ProofAgent: ${tool} was not checked`)
       } else if (risky(d)) {
-        if (strict) return { deny: `ProofAgent stopped this action: ${d!.reason ?? 'policy'}${d!.review_id ? ` A reviewer must approve it (review ${d!.review_id}); check with check_review_status, then try again.` : ''}` }
+        if (strict || d!.firm) return { deny: `ProofAgent stopped this action: ${d!.reason ?? 'policy'}${d!.review_id ? ` A reviewer must approve it (review ${d!.review_id}); check with check_review_status, then try again.` : ''}` }
         show($, { where: tool, masked: [], risks: hasRisk(d) ? riskText(d).split(', ') : [d!.reason ?? 'policy'] })
       }
     }
@@ -382,7 +392,10 @@ export const register: Register = (on, options) => {
       if (!text.trim()) return b
       const t = text.slice(0, LIMIT)
       if (isOwnAnswer(t)) return b // a ProofAgent decision: nothing to check, and its ids are not personal data
-      const d = await ask($, c, 'check_tool_result', { text: t })
+      const from = b.tool_use_id ? toolOf.get(String(b.tool_use_id)) : undefined
+      if (b.tool_use_id) toolOf.delete(String(b.tool_use_id))
+      const d = await ask($, c, 'check_tool_result', from ? { text: t, tool_name: from } : { text: t })
+      if (from && isAppInternal(from)) return b // the app's own note to Claude: reported above, never changed
       if (unchecked(d)) {
         if (!strict) return b
         changed = true // strict: what could not be checked is not handed to Claude
