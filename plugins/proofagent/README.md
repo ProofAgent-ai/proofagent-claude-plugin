@@ -115,7 +115,8 @@ Your administrator chooses the mode in the install command. Both modes check and
 |---|---|---|
 | Every message and tool call reported to your company's guardrail | Yes | Yes |
 | Personal data masked before Claude sees it | Yes | Yes |
-| Your company's own rules: confidential subjects, restricted folders and sites, what agents may do, agent safety, what is always enforced | Enforced | Enforced |
+| What your company's rules **block**: confidential subjects, restricted folders and sites, credential files, data-dump sites, what is always enforced | Stopped | Stopped |
+| What your company's rules send to a **reviewer** (for example publishing or deleting, on some levels) | Goes ahead with a notice, and is reported to your company | Held for the reviewer |
 | The model's own risk guesses (the main source of false alarms) | A notice | Enforced |
 | The guardrail can't be reached | A notice, work continues | The message or action is stopped |
 | `/proofagent off` | Pauses the checks | Refused |

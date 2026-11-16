@@ -364,3 +364,33 @@ test("warn (the default): the company's own rules are enforced, the model's gues
   expect(seen.toasts.join(' ')).toContain('not checked')
 })
 
+test('warn mode tells the server its mode: what would need a review goes ahead with a notice, and is reported', OPTIONS, async ($, on) => {
+  const seen = fresh()
+  wire(on, seen, (body) => {
+    const { name, arguments: a } = JSON.parse(body).params
+    const held = name === 'check_before_execute' && /git push/.test(JSON.stringify(a.action ?? ''))
+    const sc = !held ? { action: 'ALLOW', reason: 'Allowed.', findings: [] }
+      : a.mode === 'warn' ? { action: 'ALLOW', reason: 'Allowed.', firm: false, findings: [], notice: 'Reported to your organization: Team rule: a person approves before AI agents publish or deploy.' }
+        : { action: 'NEEDS_REVIEW', reason: 'Needs review.', firm: true, review_id: 'rev_0123456789ab', findings: [] }
+    return { status: 200, ok: true, headers: {}, text: JSON.stringify({ jsonrpc: '2.0', id: 1, result: { structuredContent: sc } }) }
+  })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const a: any = await $.tool.call({ tool: 'Bash', command: 'git push origin main' })
+  expect(a.deny).toBeUndefined()
+  expect(seen.ran.at(-1)).toBe('git push origin main')
+  expect(seen.toasts.join(' ')).toContain('Reported to your organization')
+  expect(seen.sent.every((b) => JSON.parse(b).params.arguments.mode === 'warn')).toBe(true)
+})
+
+test('strict mode tells the server its mode too, and a review is still held', STRICT, async ($, on) => {
+  const seen = fresh()
+  wire(on, seen, (body) => {
+    const { name, arguments: a } = JSON.parse(body).params
+    const sc = name === 'check_before_execute' && a.mode === 'strict' ? { action: 'NEEDS_REVIEW', reason: 'Needs review.', firm: true, review_id: 'rev_0123456789ab', findings: [] } : { action: 'ALLOW', reason: 'Allowed.', findings: [] }
+    return { status: 200, ok: true, headers: {}, text: JSON.stringify({ jsonrpc: '2.0', id: 1, result: { structuredContent: sc } }) }
+  })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const a: any = await $.tool.call({ tool: 'Bash', command: 'git push origin main' })
+  expect(String(a.deny)).toContain('rev_0123456789ab')
+})
+

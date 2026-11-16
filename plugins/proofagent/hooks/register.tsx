@@ -13,11 +13,11 @@ import type { Register } from 'claude-code'
  * The table placeholder -> real value lives only in this session's memory: Claude sees placeholders only.
  */
 
-type Decision = { action?: string; reason?: string; use_this?: unknown; findings?: Finding[]; risks?: string[]; review_id?: string; firm?: boolean; result?: { findings?: Finding[] } }
+type Decision = { action?: string; reason?: string; use_this?: unknown; findings?: Finding[]; risks?: string[]; review_id?: string; firm?: boolean; notice?: string; result?: { findings?: Finding[] } }
 /** The findings, wherever the server put them: at the top of the answer (this edition's server) or under `result`. */
 export const findingsOf = (d: Decision | null): Finding[] | undefined => d?.findings ?? d?.result?.findings
 type Finding = { kind?: string; family?: string; subfamily?: string; start?: number; end?: number; action?: string }
-type Conn = { url: string; key: string; server: string }
+type Conn = { url: string; key: string; server: string; mode?: string }
 
 const TOKEN = /\[[A-Z][A-Z_]*(?::[A-Z][A-Z_]*)?#\d+\]/g
 // The Claude app's own tools for running the session (task list, next-step box, sub-sessions, questions to the user, plans).
@@ -154,8 +154,11 @@ async function saveTable($: any, sid: string, table: Table): Promise<void> {
 }
 /** One check, with one immediate retry when it could not run: a restart or a busy moment should not stop the work. */
 async function ask($: any, c: Conn, tool: string, args: Record<string, unknown>): Promise<Decision | null> {
+  if (c.mode) args = { ...args, mode: c.mode }
   let d = await call($, c, tool, args)
   if (!d || d.action === 'NOT_CHECKED') d = (await call($, c, tool, args)) ?? d
+  // went ahead, and was reported to the organization (warn mode, or an exception set to notify)
+  if (d?.notice && tool !== 'check_tool_result') $.ui.toast(String(d.notice).slice(0, 220))
   return d
 }
 
@@ -192,7 +195,7 @@ const ENTERPRISE = true // this branch: ProofAgent Guardrail Enterprise, your co
 
 export const register: Register = (on, options) => {
   const configured = Boolean(String(options.nano_url || '').trim() && String(options.nano_key || '').trim())
-  const c: Conn = { url: String(options.nano_url || '').trim().replace(/\/(mcp)?\/?$/, '') + '/mcp', key: String(options.nano_key || ''), server: '' }
+  const c: Conn = { url: String(options.nano_url || '').trim().replace(/\/(mcp)?\/?$/, '') + '/mcp', key: String(options.nano_key || ''), server: '', mode: options.mode === 'strict' ? 'strict' : 'warn' }
   const strict = options.mode === 'strict'
   let paused = false
   let byToken: Record<string, string> = {}
