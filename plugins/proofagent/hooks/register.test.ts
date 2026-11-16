@@ -285,3 +285,24 @@ test("ProofAgent's own skill files and tools are not checked as outside content"
   expect(isOwnSkill('Bash', { command: 'cat proofagent/skills/x/SKILL.md' })).toBe(false)
 })
 
+test('masking works wherever the findings are in the answer, and without them from the masked text', STRICT, async ($, on) => {
+  const seen = fresh()
+  let shape = 'nested'
+  wire(on, seen, (body) => {
+    const r = JSON.parse(nano(body).text).result.structuredContent
+    if (typeof JSON.parse(body).params.arguments.text !== 'string') return nano(body) // a tool call: the usual answer
+    const sc = shape === 'nested' ? { action: 'ALLOW_MASKED', reason: r.reason, result: { findings: r.findings } }
+      : { action: 'ALLOW_MASKED', reason: r.reason, use_this: JSON.parse(body).params.arguments.text.replace('bob@acme.com', '[CONTACT:EMAIL#7]') }
+    return { status: 200, ok: true, headers: {}, text: JSON.stringify({ jsonrpc: '2.0', id: 1, result: { structuredContent: sc } }) }
+  })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.prompt.submit({ text: 'Write to maria@acme.com' })
+  expect(seen.prompt).toBe('Write to [CONTACT:EMAIL#1]')
+  expect(seen.toasts.some((t) => t.includes('masked'))).toBe(true) // the notice shows
+  shape = 'masked-text-only'
+  await $.prompt.submit({ text: 'And to bob@acme.com please' })
+  expect(seen.prompt).toBe('And to [CONTACT:EMAIL#2] please')
+  await $.tool.call({ tool: 'Bash', command: 'echo [CONTACT:EMAIL#1] [CONTACT:EMAIL#2]' })
+  expect(seen.ran.at(-1)).toBe('echo maria@acme.com bob@acme.com')
+})
+
