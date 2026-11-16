@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { countKinds, isOwnAnswer, isOwnSkill, isProofTool, notPersonal, ruleWords, whereOf } from './register.tsx'
+import { countKinds, findingsOf, isOwnAnswer, isOwnSkill, isProofTool, notPersonal, ruleWords, whereOf } from './register.tsx'
 
 // A stand-in for ProofAgent Nano: masks emails and the name "Maria", flags "ignore your rules", and holds sends.
 const EMAIL = /[\w.]+@[\w.]+\.\w+/g
@@ -221,4 +221,11 @@ test("ProofAgent's own tools are never checked as actions, under any connector n
   expect(isProofTool('mcp__e92ed387-ae88-4969-8a7f-4148dda76431__check_tool_result')).toBe(true)
   expect(isProofTool('mcp__plugin_proofagent_proofagent__scan_text')).toBe(true)
   expect(isProofTool('mcp__github__create_issue')).toBe(false)
+})
+
+test("reads Nano's findings where check_* tools put them (under result)", () => {
+  const f = [{ kind: 'span', family: 'CONTACT', subfamily: 'EMAIL', start: 0, end: 5, action: 'MASK' }]
+  expect(findingsOf({ action: 'ALLOW_MASKED', result: { findings: f } })).toEqual(f)
+  expect(findingsOf({ action: 'MASK', findings: f })).toEqual(f)
+  expect(findingsOf({ action: 'ALLOW' })).toBeUndefined()
 })
