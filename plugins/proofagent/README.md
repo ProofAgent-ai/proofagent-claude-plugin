@@ -116,3 +116,13 @@ Just ask Claude in plain words; the matching skill runs and ProofAgent does the 
 | Safety Score | "What did ProofAgent protect this month?" | Everyone (free) |
 
 ProofAgent helps you spot risks; it doesn't guarantee to catch everything, and it isn't legal or compliance advice.
+
+## Strict mode (the default in this edition)
+
+- **Your message** is checked before Claude sees it. Personal data becomes placeholders such as `[CONTACT:EMAIL#1]`. If your company's policy blocks the message or holds it for a reviewer, it is not sent, and you are told why.
+- **Every tool call** is checked before it runs, including chained commands and reads of credential files. A stopped call names the reason and, when a reviewer must approve it, the review id.
+- **Every tool result** is checked before Claude reads it. Personal data is masked; hidden instructions are cut out.
+- **Nothing goes unchecked.** If the guardrail can't be reached, the message or the action is stopped, after one retry. `/proofagent off` is refused.
+- **The real values stay on your machine.** The table placeholder → real value is kept in the plugin's own store on this computer, one per session, so a resumed session still fills the real values back in. It is never sent anywhere, and tables untouched for 30 days are removed.
+
+In **warn** mode nothing is stopped: you get notices only, and `/proofagent off` pauses the checks.
