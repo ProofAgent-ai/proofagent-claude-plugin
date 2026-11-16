@@ -97,30 +97,35 @@ Change it in the plugin's settings (`/plugin configure proofagent@proofagent`). 
 
 Apache-2.0 · © ProofAgent
 
-## Everyday skills
+## Workplace skills
 
-Just ask Claude in plain words; the matching skill runs and ProofAgent does the checking.
+Ask Claude in plain words, or run a skill directly with `/proofagent:<skill>`.
 
-| Skill | Ask | |
+| Skill | Ask | For |
 |---|---|---|
-| Scam Radar | "Is this message a scam?" | Everyone |
-| Safe to Share | "Make this safe to send" | Everyone |
-| Post Guard | "Can I post this caption or photo?" | Creators |
-| Deal Check | "Is this brand deal real?" | Creators |
-| Family Shield | "Is this message safe for my kid?" | Parents |
-| Invoice Shield | "Is this invoice legit?" | Finance, small business |
-| Pay Pause | Automatic before any payment | Finance |
-| Patient Privacy | "Remove patient details from this note" | Healthcare |
-| Client Cloak | "Anonymise my client's details" | Architects, legal, consultants |
-| Privacy X-Ray | "What's sensitive in this file?" | Everyone |
-| Safety Score | "What did ProofAgent protect this month?" | Everyone (free) |
+| **IP Guard** `ip-guard` | "What am I not allowed to share with AI?" · "Why was this blocked?" | Everyone |
+| **Safe to Share** `safe-to-share` | "Make this safe to send" | Everyone |
+| **Privacy X-Ray** `privacy-xray` | "What's sensitive in this file?" | Everyone |
+| **Vendor Check** `vendor-check` | "Can I send this to our supplier?" | Everyone |
+| **Meeting Cleaner** `meeting-cleaner` | "Clean these minutes so I can share them" | Everyone |
+| **Scam Radar** `scam-radar` | "Is this email genuine?" | Everyone |
+| **Code Share Check** `code-share-check` | "Can I post this code in a public issue?" | Developers |
+| **Secret Sniffer** `secret-sniffer` | "Is this file safe to commit?" | Developers |
+| **HR Hush** `hr-hush` | "Anonymise these CVs" | HR |
+| **Client Cloak** `client-cloak` | "Anonymise my client's details" | Legal, consulting |
+| **Patient Privacy** `patient-privacy` | "Remove patient details from this note" | Healthcare |
+| **Invoice Shield** `invoice-shield` | "Is this invoice legitimate?" | Finance |
+| **Pay Pause** `pay-pause` | Runs before any payment | Finance |
+| **Safety Score** `safety-score` | "What did the guardrail check for me?" | Everyone |
 
-ProofAgent helps you spot risks; it doesn't guarantee to catch everything, and it isn't legal or compliance advice.
+The checks themselves are automatic: these skills add help on top (explaining a stop, preparing a safe version). What is confidential and which folders are restricted is set by your administrator in the console, under **Policies › Confidential projects and restricted folders**; a skill never loosens it.
+
+ProofAgent helps you spot risks; it does not guarantee to catch everything, and it is not legal or compliance advice.
 
 ## Strict mode (the default in this edition)
 
-- **Your message** is checked before Claude sees it. Personal data becomes placeholders such as `[CONTACT:EMAIL#1]`. If your company's policy blocks the message or holds it for a reviewer, it is not sent, and you are told why.
-- **Every tool call** is checked before it runs, including chained commands and reads of credential files. A stopped call names the reason and, when a reviewer must approve it, the review id.
+- **Your message** is checked before Claude sees it. Personal data becomes placeholders such as `[CONTACT:EMAIL#1]`. If your company's policy blocks the message or holds it for a reviewer, it is not sent, and you are told why, including which of your own words is confidential.
+- **Every tool call** is checked before it runs, reads included, so folders and internal sites your company restricts stay closed. A stopped call names the reason and, when a reviewer must approve it, the review id.
 - **Every tool result** is checked before Claude reads it. Personal data is masked; hidden instructions are cut out.
 - **Nothing goes unchecked.** If the guardrail can't be reached, the message or the action is stopped, after one retry. `/proofagent off` is refused.
 - **The real values stay on your machine.** The table placeholder → real value is kept in the plugin's own store on this computer, one per session, so a resumed session still fills the real values back in. It is never sent anywhere, and tables untouched for 30 days are removed.

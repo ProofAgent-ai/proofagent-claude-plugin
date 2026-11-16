@@ -18,8 +18,9 @@ type Finding = { kind?: string; family?: string; subfamily?: string; start?: num
 type Conn = { url: string; key: string; server: string }
 
 const TOKEN = /\[[A-Z][A-Z_]*(?::[A-Z][A-Z_]*)?#\d+\]/g
-// Read-only tools: their input is not an action, so it needs no policy check (their results are still checked).
-const READ_ONLY = new Set(['Read', 'Glob', 'Grep', 'LS', 'TodoWrite', 'NotebookRead', 'WebSearch', 'Task', 'TaskOutput'])
+// Tools that touch nothing outside the session: no file, no command, no network. Everything else is checked, reads included,
+// because your company's policy can restrict folders and internal sites (a read of a restricted folder is an action too).
+const INERT = new Set(['TodoWrite', 'Task', 'TaskOutput', 'TaskCreate', 'TaskUpdate', 'TaskList', 'TaskGet', 'ExitPlanMode', 'EnterPlanMode', 'AskUserQuestion'])
 // Technical values Nano can tag that are not personal data: masking them only gets in the way of the work.
 const TECHNICAL = new Set(['URL:FILE_PATH', 'URL:URL', 'URL:DOMAIN', 'NETWORK:HOSTNAME', 'CODE:IDENTIFIER'])
 // Never personal data: ProofAgent's own ids (scans, reviews, keys' ids), and version numbers read as IP addresses.
@@ -31,10 +32,6 @@ export function notPersonal(value: string, family?: string, subfamily?: string):
   if (family === 'NETWORK' && subfamily === 'IPV4' && !IPV4.test(v)) return true
   return false
 }
-// A harmless read-only command, alone: no chaining, piping, redirection or substitution after it ("ls; rm -rf /" is not safe).
-const SAFE_BASH = /^\s*(ls|pwd|cat|head|tail|wc|echo|git (status|diff|log|show|branch))\b[^;&|`$<>\n]*$/
-// Files that hold credentials: reading one is an action your company's policy decides, even with a read-only tool.
-const SENSITIVE = /(^|[\/\s"'=])(\.env(\.[\w-]+)?|\.ssh|\.aws|\.kube|\.gnupg|\.netrc|\.npmrc|\.pgpass|id_(rsa|dsa|ecdsa|ed25519)|credentials|secrets?)(\b|$)|\.(pem|key|pfx|p12|keystore)(\b|$)|\/etc\/(shadow|passwd|sudoers)/i
 /** How much of one prompt or tool result is checked (characters). Beyond it, strict mode stops; warn mode says so. */
 const LIMIT = 200_000
 const REMOVED = '[removed by ProofAgent: hidden instruction]'
@@ -338,9 +335,7 @@ export const register: Register = (on, options) => {
     if (paused || /proofagent/i.test(tool)) return next(e)
     const input = e as unknown as Record<string, unknown>
     const action = Object.fromEntries(Object.entries(input).filter(([k]) => !ENGINE_FIELDS.has(k)))
-    const body = JSON.stringify(action)
-    const isSafe = SENSITIVE.test(body) ? false : READ_ONLY.has(tool) || (tool === 'Bash' && SAFE_BASH.test(String(input.command ?? '')))
-    if (!isSafe) {
+    if (!INERT.has(tool)) {
       const d = await ask($, c, 'check_before_execute', { tool, action }) // placeholders only, never the real values
       if (unchecked(d)) {
         if (strict) return { deny: `ProofAgent stopped this action: it could not be checked, because ${whyNot(d)}. Try again in a moment.` }

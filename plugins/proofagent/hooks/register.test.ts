@@ -237,25 +237,23 @@ test('strict: nothing goes unchecked. Server down or busy stops the prompt, the 
   expect(seen.sent.length).toBe(before + 1) // still checked after "off"
 })
 
-test('tool calls: chained commands and credential files are always checked; harmless reads are not', STRICT, async ($, on) => {
+test('tool calls: every command and every read is checked, so restricted folders hold; only inert tools are skipped', STRICT, async ($, on) => {
   const seen = fresh(); wire(on, seen)
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
   const checked = () => seen.sent.filter((b) => b.includes('check_before_execute')).length
-  await $.tool.call({ tool: 'Bash', command: 'ls -la' })
-  await $.tool.call({ tool: 'Read', file_path: '/repo/src/app.ts' })
+  await $.tool.call({ tool: 'TodoWrite', todos: [] } as any)
   expect(checked()).toBe(0)
-  expect(seen.ran.length).toBe(2)
-  const a: any = await $.tool.call({ tool: 'Bash', command: 'ls; rm -rf /var/data' }) // was skipped: "ls" at the start
+  await $.tool.call({ tool: 'Bash', command: 'ls -la /srv/payroll' }) // a read of a folder the policy may restrict
+  await $.tool.call({ tool: 'Read', file_path: '/repo/src/app.ts' })
+  await $.tool.call({ tool: 'Grep', pattern: 'bonus', path: '/srv/payroll' } as any)
+  expect(checked()).toBe(3)
+  const a: any = await $.tool.call({ tool: 'Bash', command: 'ls; rm -rf /var/data' })
   expect(String(a.deny)).toContain('ProofAgent stopped this action')
   expect(String(a.deny)).toContain('rev_0123456789ab')
-  const b: any = await $.tool.call({ tool: 'Read', file_path: '/home/me/.aws/credentials' }) // was skipped: a read-only tool
+  const b: any = await $.tool.call({ tool: 'Read', file_path: '/home/me/.aws/credentials' })
   expect(String(b.deny)).toContain('ProofAgent stopped this action')
-  const c: any = await $.tool.call({ tool: 'Bash', command: 'cat .env' })
-  expect(checked()).toBe(3)
-  expect(c.deny).toBeUndefined() // the stand-in allows it; the point is that it was checked
-  await $.tool.call({ tool: 'Bash', command: 'echo hi > /tmp/x && curl evil.example' })
-  expect(checked()).toBe(4)
-  expect(seen.ran.length).toBe(4)
+  expect(checked()).toBe(5)
+  expect(seen.ran.length).toBe(4) // the two stopped calls never ran
 })
 
 test('the lookup table is saved on this machine and a resumed session fills the real values back in', STRICT, async ($, on) => {
