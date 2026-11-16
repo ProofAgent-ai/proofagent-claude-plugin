@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { isOwnAnswer, notPersonal, toIndex } from './register.tsx'
+import { isOwnAnswer, isOwnSkill, notPersonal, toIndex } from './register.tsx'
 
 // A stand-in for ProofAgent Nano: masks emails and the name "Maria", flags "ignore your rules", and holds sends.
 const EMAIL = /[\w.]+@[\w.]+\.\w+/g
@@ -275,3 +275,13 @@ test('the lookup table is saved on this machine and a resumed session fills the 
   expect(seen.prompt).toBe('Also [CONTACT:EMAIL#2]')
   expect(seen.store['table:old']).toBeUndefined()
 })
+
+test("ProofAgent's own skill files and tools are not checked as outside content", {}, async () => {
+  expect(isOwnSkill('Skill', { skill: 'proofagent:ip-guard' })).toBe(true)
+  expect(isOwnSkill('Skill', { skill: 'other:deploy' })).toBe(false)
+  expect(isOwnSkill('Read', { file_path: '/Users/a/.claude/plugins/cache/proofagent-enterprise/proofagent/1.2.4/skills/ip-guard/SKILL.md' })).toBe(true)
+  expect(isOwnSkill('Read', { file_path: '/repo/skills/ip-guard/SKILL.md' })).toBe(false)
+  expect(isOwnSkill('mcp__plugin_proofagent_proofagent__active_policy', {})).toBe(true)
+  expect(isOwnSkill('Bash', { command: 'cat proofagent/skills/x/SKILL.md' })).toBe(false)
+})
+

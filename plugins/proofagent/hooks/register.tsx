@@ -32,6 +32,13 @@ export function notPersonal(value: string, family?: string, subfamily?: string):
   if (family === 'NETWORK' && subfamily === 'IPV4' && !IPV4.test(v)) return true
   return false
 }
+// ProofAgent's own skill files and tools: instructions and answers by design, so they are not outside content to check.
+const OWN_SKILL = /[\/\\]proofagent[\/\\](?:[^\/\\]+[\/\\])?skills[\/\\][\w-]+[\/\\]SKILL\.md$/i
+export function isOwnSkill(tool: string, input: Record<string, unknown>): boolean {
+  if (tool === 'Skill') return /^proofagent:/i.test(String(input.skill ?? input.name ?? ''))
+  if (tool === 'Read') return OWN_SKILL.test(String(input.file_path ?? input.path ?? ''))
+  return /proofagent/i.test(tool) // the guardrail's own tools (active_policy, scan_text…)
+}
 /** How much of one prompt or tool result is checked (characters). Beyond it, strict mode stops; warn mode says so. */
 const LIMIT = 200_000
 const REMOVED = '[removed by ProofAgent: hidden instruction]'
@@ -187,6 +194,7 @@ export const register: Register = (on, options) => {
   let counter: Record<string, number> = {}
   let sid = ''
   let saved = 0
+  const ownResults = new Set<string>() // tool_use ids of ProofAgent's own skill files and tool answers
   const unchecked = (d: Decision | null) => !d || d.action === 'NOT_CHECKED'
   const whyNot = (d: Decision | null) => (d?.action === 'NOT_CHECKED' ? String(d.reason ?? 'the guardrail could not check this') : "your company's guardrail can't be reached")
 
@@ -332,8 +340,13 @@ export const register: Register = (on, options) => {
   // ── 2. Claude's tool calls: policy check (notice, or stop in strict mode), then the real values ──
   on('tool.call', async ($, e, next) => {
     const tool = String(e.tool)
-    if (paused || /proofagent/i.test(tool)) return next(e)
     const input = e as unknown as Record<string, unknown>
+    if (isOwnSkill(tool, input)) { // its result is ProofAgent's own text: remember it, so it is not checked as outside content
+      if (input.tool_use_id) ownResults.add(String(input.tool_use_id))
+      if (ownResults.size > 500) ownResults.clear()
+      return next(/proofagent/i.test(tool) ? e : (restoreDeep(e) as typeof e))
+    }
+    if (paused) return next(e)
     const action = Object.fromEntries(Object.entries(input).filter(([k]) => !ENGINE_FIELDS.has(k)))
     if (!INERT.has(tool)) {
       const d = await ask($, c, 'check_before_execute', { tool, action }) // placeholders only, never the real values
@@ -355,6 +368,7 @@ export const register: Register = (on, options) => {
     let changed = false
     const out = await Promise.all(content.map(async (b: any) => {
       if (b?.type !== 'tool_result') return b
+      if (b.tool_use_id && ownResults.delete(String(b.tool_use_id))) return b // ProofAgent's own skill file or answer: nothing to check
       if (Array.isArray(b.content) && b.content.some((x: any) => x?.type !== 'text')) return b
       const text = typeof b.content === 'string' ? b.content : Array.isArray(b.content) ? b.content.map((x: any) => x.text).join('\n') : ''
       if (!text.trim()) return b
