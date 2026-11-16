@@ -101,18 +101,20 @@ Apache-2.0 · © ProofAgent
 
 Just ask Claude in plain words; the matching skill runs and ProofAgent does the checking.
 
-| Skill | Ask | |
+| Skill | Ask | For |
 |---|---|---|
 | Scam Radar | "Is this message a scam?" | Everyone |
-| Safe to Share | "Make this safe to send" | Everyone |
-| Post Guard | "Can I post this caption or photo?" | Creators |
-| Deal Check | "Is this brand deal real?" | Creators |
-| Family Shield | "Is this message safe for my kid?" | Parents |
-| Invoice Shield | "Is this invoice legit?" | Finance, small business |
-| Pay Pause | Automatic before any payment | Finance |
-| Patient Privacy | "Remove patient details from this note" | Healthcare |
-| Client Cloak | "Anonymise my client's details" | Architects, legal, consultants |
+| Share Shield | "Make this safe to send" | Everyone |
 | Privacy X-Ray | "What's sensitive in this file?" | Everyone |
-| Safety Score | "What did ProofAgent protect this month?" | Everyone (free) |
+| Post Patrol | "Can I post this?" | Creators, parents |
+| Deal Detector | "Is this brand deal real?" | Creators |
+| Kid Keeper | "Is this message safe for my kid?" | Parents |
+| Invoice Inspector | "Is this invoice legit?" | Finance, small business |
+| Pay Pause | Runs before Claude pays | Finance |
+| Patient Mask | "Remove patient details from this note" | Healthcare |
+| HR Hush | "Anonymise these CVs" | HR, recruiters |
+| Client Cloak | "Anonymise my client's details" | Legal, architects, consultants |
+| Secret Sniffer | "Any secrets in this file?" | Developers |
+| Safety Score | "What did ProofAgent protect this month?" | Everyone |
 
 ProofAgent helps you spot risks; it doesn't guarantee to catch everything, and it isn't legal or compliance advice.

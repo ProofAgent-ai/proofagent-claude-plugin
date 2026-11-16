@@ -116,21 +116,54 @@ async function call($: any, c: Conn, tool: string, args: Record<string, unknown>
   }
 }
 
-// Risk names Nano reports, grouped for the notice. AI risks: attacks on the assistant itself.
+// ── Notices: one short line in plain words. No rule ids, policy names or raw tool names. ──
 const AI_RISK = /injection|jailbreak|system prompt|obfuscation|evasion|manipulation|role|override/i
-const DATA_RISK = /exfiltration|leak|disclosure|secret|credential/i
+// ProofAgent's own tools, under any server name (plugin or claude.ai connector): their calls and answers are not checked again.
+const PROOF_TOOL = /^mcp__.+__(check_user_message|check_tool_call|check_before_execute|check_tool_result|check_reply|scan_text|scan_batch|get_usage|get_policy|active_policy|use_policy|policy_vocabulary|validate_policy)$/
+export const isProofTool = (tool: string) => /proofagent/i.test(tool) || PROOF_TOOL.test(tool)
 
-function show($: any, n: { where: string; masked: string[]; risks: string[] }): void {
-  const ai = n.risks.filter((r) => AI_RISK.test(r))
-  const data = n.risks.filter((r) => !AI_RISK.test(r) && DATA_RISK.test(r))
-  const other = n.risks.filter((r) => !AI_RISK.test(r) && !DATA_RISK.test(r))
-  const parts = [
-    n.masked.length ? `masked ${n.masked.join(', ')}` : '',
-    ai.length ? `⚠ AI risk: ${ai.join(', ')}` : '',
-    data.length ? `⚠ Data risk: ${data.join(', ')}` : '',
-    other.length ? `⚠ Risk: ${other.join(', ')}` : '',
-  ].filter(Boolean)
-  if (parts.length) $.ui.toast(`${parts.join(' · ')} (${n.where})`) // Claude Code shows the plugin name before it
+// Built-in rules, in words.
+const RULES: Record<string, string> = {
+  'secret-locations': 'touches a credential file',
+  'destructive-command': 'deletes or overwrites data',
+  'cloud-bulk-delete': 'deletes cloud resources in bulk',
+  'data-dump-site': 'sends data to a paste or dump site',
+  'data-upload-outside': 'uploads a file outside',
+  'metadata-host': 'reads cloud credentials from the metadata service',
+  'irreversible-tool': 'cannot be undone',
+  'irreversible-verb': 'cannot be undone',
+}
+export function ruleWords(reason: string): string {
+  const words = [...new Set(Object.keys(RULES).filter((id) => reason.includes(id)).map((id) => RULES[id]))]
+  if (words.length) return words.join(', ')
+  if (/payment|transfer|refund|payout/i.test(reason)) return 'moves money'
+  return reason.replace(/\s*\((?:policy )?rule[^)]*\)/gi, '').replace(/;\s*rules?:.*$/i, '').replace(/\s*\.$/, '').trim() || 'needs a look'
+}
+/** Where it happened, in words. */
+export function whereOf(tool: string): string {
+  if (tool === 'Bash') return 'a command'
+  if (/^(Write|Edit|MultiEdit|NotebookEdit)$/.test(tool)) return 'a file change'
+  if (tool === 'WebFetch') return 'a web page'
+  const m = /^mcp__.+?__(.+)$/.exec(tool)
+  return m ? m[1].replace(/_/g, ' ') : tool
+}
+/** Risk names -> plain words. */
+export function riskWords(risks: string[]): string {
+  return [...new Set(risks.map((r) => /indirect|injected/i.test(r) ? 'hidden instructions for the AI' : /prompt injection/i.test(r) ? 'an attempt to override the AI'
+    : /jailbreak/i.test(r) ? 'a jailbreak attempt' : /exfiltration/i.test(r) ? 'data being sent out' : r.toLowerCase()))].join(', ')
+}
+/** "[CONTACT:EMAIL#1] [CONTACT:EMAIL#2] [CONTACT:PHONE#1]" -> "2 emails, 1 phone". */
+export function countKinds(masked: string): string {
+  const n: Record<string, number> = {}
+  for (const t of masked.match(TOKEN) ?? []) { const k = t.slice(1, t.indexOf('#')).split(':').pop()!.toLowerCase().replace(/_/g, ' '); n[k] = (n[k] ?? 0) + 1 }
+  return Object.entries(n).map(([k, c]) => `${c} ${k}${c > 1 && !k.endsWith('s') ? 's' : ''}`).join(', ')
+}
+const recent = new Map<string, number>()
+function notify($: any, text: string): void {
+  const now = Date.now()
+  if ((recent.get(text) ?? 0) > now - 60_000) return // the same notice once a minute at most
+  recent.set(text, now)
+  $.ui.toast(text) // Claude Code shows the plugin name before it
 }
 
 /** A ProofAgent decision returned by its own tools (action + scan id): it is not content to check again. */
@@ -148,7 +181,7 @@ export const register: Register = (on, options) => {
   let byValue: Record<string, string> = {}
   let counter: Record<string, number> = {}
 
-  const ownResults = new Set<string>() // tool_use ids of ProofAgent's own skill files being read
+  const ownResults = new Set<string>() // tool_use ids of ProofAgent's own skill files and tool answers
   let last = '' // what happened to the last message, kept on the status line so a missed pop-up never leaves you guessing
   const statusText = () => (paused ? 'off' : 'on') // the app shows the plugin name before it; risks and masking go in notices
 
@@ -244,7 +277,7 @@ export const register: Register = (on, options) => {
     if (!d) {
       last = 'not checked'
       $.ui.status(statusText())
-      $.ui.toast('could not reach ProofAgent: this message was not checked')
+      notify($, 'Could not reach ProofAgent: this message was not checked')
       return next(e)
     }
     const text = maskSpans(t, scan?.findings) + e.text.slice(20_000)
@@ -254,7 +287,8 @@ export const register: Register = (on, options) => {
     last = risky(d) && hasRisk(d) ? '⚠ risk' : masked ? `masked ${masked}` : 'checked'
     $.ui.status(statusText())
     if (!notes.length) return next(e)
-    show($, { where: 'your message', masked: k, risks: risky(d) && hasRisk(d) ? riskText(d).split(', ') : [] })
+    if (risky(d) && hasRisk(d)) notify($, `⚠ Your message looks like ${riskWords(riskText(d).split(', '))}: Claude was told not to follow it`)
+    else if (k.length) notify($, `🔒 Hid ${countKinds(text)} in your message`)
     const context = [...(e.context ?? [])]
     if (k.length) context.push('Personal data in this message is shown as placeholders like [CONTACT:EMAIL#1]. Use them as written, including in tool calls '
       + "(the real values are filled in on the user's machine). Answer normally; do not mention the placeholders or ProofAgent unless asked.")
@@ -265,7 +299,10 @@ export const register: Register = (on, options) => {
   // ── 2. Claude's tool calls: policy check (notice, or stop in strict mode), then the real values ──
   on('tool.call', async ($, e, next) => {
     const tool = String(e.tool)
-    if (paused || /proofagent/i.test(tool)) return next(e)
+    if (paused || isProofTool(tool)) {
+      if (isProofTool(tool) && (e as any).tool_use_id) ownResults.add(String((e as any).tool_use_id))
+      return next(e)
+    }
     const input = e as unknown as Record<string, unknown>
     if (isOwnSkill(tool, input) && input.tool_use_id) ownResults.add(String(input.tool_use_id))
     const isSafe = READ_ONLY.has(tool) || (tool === 'Bash' && SAFE_BASH.test(String(input.command ?? '')))
@@ -273,8 +310,9 @@ export const register: Register = (on, options) => {
       const action = Object.fromEntries(Object.entries(input).filter(([k]) => !ENGINE_FIELDS.has(k)))
       const d = await call($, c, 'check_before_execute', { tool, action }) // placeholders only, never the real values
       if (risky(d)) {
-        if (strict) return { deny: `ProofAgent stopped this action: ${d!.reason ?? 'policy'}` }
-        show($, { where: tool, masked: [], risks: hasRisk(d) ? riskText(d).split(', ') : [d!.reason ?? 'policy'] })
+        if (strict) return { deny: `ProofAgent stopped this action: it ${hasRisk(d) ? 'shows ' + riskWords(riskText(d).split(', ')) : ruleWords(String(d!.reason ?? ''))}.` }
+        const why = hasRisk(d) ? riskWords(riskText(d).split(', ')) : ruleWords(String(d!.reason ?? ''))
+        notify($, `⚠ ${whereOf(tool)[0].toUpperCase()}${whereOf(tool).slice(1)} ${why}: allowed (warn mode)`)
       }
     }
     return next(restoreDeep(e) as typeof e)
@@ -287,14 +325,15 @@ export const register: Register = (on, options) => {
     let changed = false
     const out = await Promise.all(content.map(async (b: any) => {
       if (b?.type !== 'tool_result') return b
-      if (b.tool_use_id && ownResults.delete(String(b.tool_use_id))) return b // ProofAgent's own skill file: not an injection
+      if (b.tool_use_id && ownResults.delete(String(b.tool_use_id))) return b // ProofAgent's own skill file or answer: nothing to check
       if (Array.isArray(b.content) && b.content.some((x: any) => x?.type !== 'text')) return b
       const text = typeof b.content === 'string' ? b.content : Array.isArray(b.content) ? b.content.map((x: any) => x.text).join('\n') : ''
       if (!text.trim()) return b
       const t = text.slice(0, 20_000)
       if (isOwnAnswer(t)) return b // a ProofAgent decision: nothing to check, and its ids are not personal data
       const d = await call($, c, 'check_tool_result', { text: t })
-      if (risky(d) && hasRisk(d)) show($, { where: 'a tool result', masked: [], risks: riskText(d).split(', ') })
+      const ai = riskText(d).split(', ').filter((r) => r && AI_RISK.test(r))
+      if (risky(d) && ai.length) notify($, `⚠ Found ${riskWords(ai)} in what a tool returned: Claude was told not to follow them`)
       const m = maskSpans(t, d?.findings)
       if (m === t) return b
       changed = true

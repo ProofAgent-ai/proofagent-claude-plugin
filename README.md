@@ -42,17 +42,19 @@ Ask Claude in plain words, or run a skill directly with `/proofagent:<skill>`. E
 
 | Skill | What it does | Try asking | For |
 |---|---|---|---|
-| 🛡️ **Scam Radar** `scam-radar` | Tells you if a message, DM, email or link looks like a scam, and what to do | "Is this message a scam?" | Everyone |
-| 🔒 **Safe to Share** `safe-to-share` | Strips names, contacts, cards and IDs so text is safe to send or paste | "Make this safe to send" | Everyone |
-| 📸 **Post Guard** `post-guard` | Checks a caption or photo for your address, school, plates or routine before posting | "Can I post this?" | Creators, parents |
-| 🤝 **Deal Check** `deal-check` | Spots fake brand deals and flags risky contract terms | "Is this brand deal real?" | Influencers |
-| 👨‍👩‍👧 **Family Shield** `family-shield` | Spots grooming and scam signals in messages to kids; keeps kids' details private | "Is this message safe for my kid?" | Parents |
-| 🧾 **Invoice Shield** `invoice-shield` | Catches fake invoices and changed bank details before you pay | "Is this invoice legit?" | Finance, small business |
-| ⏸️ **Pay Pause** `pay-pause` | A safety stop before any payment or transfer; large ones wait for your approval | Runs before Claude pays | Finance, banking |
-| 🩺 **Patient Privacy** `patient-privacy` | Removes patient identifiers before notes are summarised or shared | "Remove patient details from this note" | Healthcare |
-| 🕶️ **Client Cloak** `client-cloak` | Anonymises client names, addresses, project names and fees | "Anonymise my client's details" | Architects, legal, consultants |
+| 🛡️ **Scam Radar** `scam-radar` | Says if a message, email, link or offer looks like a scam, and what to do | "Is this message a scam?" | Everyone |
+| 🔒 **Share Shield** `share-shield` | Hides names, contacts, cards and IDs so text is safe to send or paste | "Make this safe to send" | Everyone |
 | 🔍 **Privacy X-Ray** `privacy-xray` | Lists every sensitive detail in a document, by type | "What's sensitive in this file?" | Everyone |
-| 🏅 **Safety Score** `safety-score` | Shows what ProofAgent protected you from and your remaining calls (free) | "What did ProofAgent protect this month?" | Everyone |
+| 📸 **Post Patrol** `post-patrol` | Checks a post or photo for addresses, schools, plates or routines before it goes public | "Can I post this?" | Creators, parents |
+| 🤝 **Deal Detector** `deal-detector` | Spots fake brand deals and flags risky contract terms | "Is this brand deal real?" | Creators |
+| 👨‍👩‍👧 **Kid Keeper** `kid-keeper` | Keeps children's details private and spots grooming or scams in messages to kids | "Is this message safe for my kid?" | Parents |
+| 🧾 **Invoice Inspector** `invoice-inspector` | Catches fake invoices and changed bank details before you pay | "Is this invoice legit?" | Finance, small business |
+| ⏸️ **Pay Pause** `pay-pause` | A safety stop before any payment: it goes ahead, waits for approval or is stopped | Runs before Claude pays | Finance |
+| 🩺 **Patient Mask** `patient-mask` | Removes patient identifiers before notes are summarised or shared | "Remove patient details from this note" | Healthcare |
+| 👔 **HR Hush** `hr-hush` | Hides employee and candidate details in CVs, reviews, complaints and salary data | "Anonymise these CVs" | HR, recruiters |
+| 🕶️ **Client Cloak** `client-cloak` | Anonymises client names, addresses, project names and fees | "Anonymise my client's details" | Legal, architects, consultants |
+| 🔑 **Secret Sniffer** `secret-sniffer` | Finds keys, tokens and passwords in code, config or logs before you commit or share | "Any secrets in this file?" | Developers |
+| 🏅 **Safety Score** `safety-score` | Shows what ProofAgent caught for you, and your checks and credits left (free) | "What did ProofAgent protect this month?" | Everyone |
 
 Works in English, French and Arabic. Photos: Claude reads what's visible and ProofAgent checks it; ProofAgent itself reads text only. ProofAgent helps you spot risks; it doesn't guarantee to catch everything and isn't legal or compliance advice.
 
