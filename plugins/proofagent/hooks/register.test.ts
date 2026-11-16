@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { isOwnAnswer, notPersonal } from './register.tsx'
+import { isOwnAnswer, isOwnSkill, notPersonal } from './register.tsx'
 
 // A stand-in for ProofAgent Nano: masks emails and the name "Maria", flags "ignore your rules", and holds sends.
 const EMAIL = /[\w.]+@[\w.]+\.\w+/g
@@ -197,4 +197,13 @@ test('one policy check per prompt and per tool result', OPTIONS, async ($, on) =
   await $.session.start({ cwd: '/tmp' })
   await $.prompt.submit({ text: 'Refactor the scan popup' })
   expect(names).toEqual(['check_user_message'])
+})
+
+test('ProofAgent skill files are not checked as tool results', () => {
+  expect(isOwnSkill('Read', { file_path: '/Users/me/.claude/plugins/cache/proofagent/proofagent/1.2.6/skills/pay-pause/SKILL.md' })).toBe(true)
+  expect(isOwnSkill('Read', { file_path: '/repo/plugins/proofagent/skills/guardrail/SKILL.md' })).toBe(true)
+  expect(isOwnSkill('Skill', { skill: 'proofagent:pay-pause' })).toBe(true)
+  expect(isOwnSkill('Read', { file_path: '/Users/me/project/skills/evil/SKILL.md' })).toBe(false)
+  expect(isOwnSkill('Read', { file_path: '/Users/me/proofagent/notes.md' })).toBe(false)
+  expect(isOwnSkill('Skill', { skill: 'other:pay' })).toBe(false)
 })

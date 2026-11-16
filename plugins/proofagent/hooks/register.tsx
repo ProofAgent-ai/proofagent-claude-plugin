@@ -35,6 +35,14 @@ const SAFE_BASH = /^\s*(ls|pwd|cat|head|tail|wc|echo|git (status|diff|log|show|b
 // Fields the engine adds to a tool call: ids, not the action. Never sent to ProofAgent (an id can look like a key).
 const ENGINE_FIELDS = new Set(['tool', 'tool_use_id', 'agentId', 'isReadOnly'])
 
+// ProofAgent's own skill files: instructions by design, so reading them is not a prompt injection (nothing to check).
+const OWN_SKILL = /[\/\\]proofagent[\/\\](?:[^\/\\]+[\/\\])?skills[\/\\][\w-]+[\/\\]SKILL\.md$/i
+export function isOwnSkill(tool: string, input: Record<string, unknown>): boolean {
+  if (tool === 'Skill') return /^proofagent:/i.test(String(input.skill ?? input.name ?? ''))
+  if (tool === 'Read') return OWN_SKILL.test(String(input.file_path ?? input.path ?? ''))
+  return false
+}
+
 /** A tool result as a decision: the structured field when the client passes it on, else the JSON in its text block. */
 function decisionOf(r: { structuredContent?: unknown; content?: unknown }): Decision {
   if (r.structuredContent && typeof r.structuredContent === 'object') return r.structuredContent as Decision
@@ -140,6 +148,7 @@ export const register: Register = (on, options) => {
   let byValue: Record<string, string> = {}
   let counter: Record<string, number> = {}
 
+  const ownResults = new Set<string>() // tool_use ids of ProofAgent's own skill files being read
   let last = '' // what happened to the last message, kept on the status line so a missed pop-up never leaves you guessing
   const statusText = () => (paused ? 'off' : 'on') // the app shows the plugin name before it; risks and masking go in notices
 
@@ -258,6 +267,7 @@ export const register: Register = (on, options) => {
     const tool = String(e.tool)
     if (paused || /proofagent/i.test(tool)) return next(e)
     const input = e as unknown as Record<string, unknown>
+    if (isOwnSkill(tool, input) && input.tool_use_id) ownResults.add(String(input.tool_use_id))
     const isSafe = READ_ONLY.has(tool) || (tool === 'Bash' && SAFE_BASH.test(String(input.command ?? '')))
     if (!isSafe) {
       const action = Object.fromEntries(Object.entries(input).filter(([k]) => !ENGINE_FIELDS.has(k)))
@@ -277,6 +287,7 @@ export const register: Register = (on, options) => {
     let changed = false
     const out = await Promise.all(content.map(async (b: any) => {
       if (b?.type !== 'tool_result') return b
+      if (b.tool_use_id && ownResults.delete(String(b.tool_use_id))) return b // ProofAgent's own skill file: not an injection
       if (Array.isArray(b.content) && b.content.some((x: any) => x?.type !== 'text')) return b
       const text = typeof b.content === 'string' ? b.content : Array.isArray(b.content) ? b.content.map((x: any) => x.text).join('\n') : ''
       if (!text.trim()) return b
