@@ -1,6 +1,6 @@
 {
   "name": "proofagent",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Keep your private data private in Claude: ProofAgent masks personal data before Claude sees it (real values are filled back in on your machine) and flags AI risks. Includes 14 skills: Guardrail, Scam Radar, Share Shield, Privacy X-Ray, Post Patrol, Deal Detector, Kid Keeper, Invoice Inspector, Pay Pause, Patient Mask, HR Hush, Client Cloak, Secret Sniffer and Safety Score. Works in English, French and Arabic.",
   "author": {
     "name": "ProofAgent",

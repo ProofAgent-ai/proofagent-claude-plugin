@@ -49,7 +49,7 @@ Ask Claude in plain words, or run a skill directly with `/proofagent:<skill>`. E
 | 🤝 **Deal Detector** `deal-detector` | Spots fake brand deals and flags risky contract terms | "Is this brand deal real?" | Creators |
 | 👨‍👩‍👧 **Kid Keeper** `kid-keeper` | Keeps children's details private and spots grooming or scams in messages to kids | "Is this message safe for my kid?" | Parents |
 | 🧾 **Invoice Inspector** `invoice-inspector` | Catches fake invoices and changed bank details before you pay | "Is this invoice legit?" | Finance, small business |
-| ⏸️ **Pay Pause** `pay-pause` | A safety stop before any payment: it goes ahead, waits for approval or is stopped | Runs before Claude pays | Finance |
+| ⏸️ **Pay Pause** `pay-pause` | A safety check before any payment: goes ahead with a notice, or waits for approval when your policy says so | Runs before Claude pays | Finance |
 | 🩺 **Patient Mask** `patient-mask` | Removes patient identifiers before notes are summarised or shared | "Remove patient details from this note" | Healthcare |
 | 👔 **HR Hush** `hr-hush` | Hides employee and candidate details in CVs, reviews, complaints and salary data | "Anonymise these CVs" | HR, recruiters |
 | 🕶️ **Client Cloak** `client-cloak` | Anonymises client names, addresses, project names and fees | "Anonymise my client's details" | Legal, architects, consultants |

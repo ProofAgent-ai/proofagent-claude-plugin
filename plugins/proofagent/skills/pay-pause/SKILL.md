@@ -1,6 +1,6 @@
 ---
 name: pay-pause
-description: A safety stop before any payment, transfer, refund or change of bank or card details: it goes ahead, waits for approval or is stopped. Use before Claude makes, schedules or helps submit any payment.
+description: A safety check before any payment, transfer, refund or change of bank or card details: it goes ahead with a notice, waits for approval when the organization's policy says so, or is stopped. Use before Claude makes, schedules or helps submit any payment.
 ---
 
 # ⏸️ Pay Pause
@@ -15,7 +15,7 @@ A safety stop before any money moves.
 ## Reading the result (`action`)
 | Result | What to do |
 |---|---|
-| ALLOW | Go ahead with exactly this payment. |
+| ALLOW | Go ahead with exactly this payment, and tell the user in one line that money moved (payee and amount). The organization's policy decides which payments need approval: all, those over an amount, or none. |
 | ALLOW_MASKED | Go ahead with `use_this`. |
 | HOLD_FOR_HUMAN | Stop. Tell the user it needs approval and give them `approval.id`. Once they say it was approved, call again with `approval` and the identical action. |
 | BLOCK | Don't do it; give the reason. |
