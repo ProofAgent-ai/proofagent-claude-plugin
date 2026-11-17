@@ -101,6 +101,7 @@ Ask Claude in plain words, or run a skill directly with `/proofagent:<skill>`.
 | **Patient Privacy** `patient-privacy` | "Remove patient details from this note" | Healthcare |
 | **Invoice Shield** `invoice-shield` | "Is this invoice legitimate?" | Finance |
 | **Pay Pause** `pay-pause` | Runs before any payment | Finance |
+| **Finance Guard** `finance-guard` | Runs before any payment, payroll, ledger or budget change, and reviews finance-agent code | Finance |
 | **Safety Score** `safety-score` | "What did the guardrail check for me?" | Everyone |
 
 The checks themselves are automatic: these skills add help on top (explaining a stop, preparing a safe version). What is confidential and which folders are restricted is set by your administrator in the console, under **Policies › Confidential projects and restricted folders**; a skill never loosens it.

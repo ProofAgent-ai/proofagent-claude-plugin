@@ -1,6 +1,6 @@
 {
   "name": "proofagent",
-  "version": "1.2.4-enterprise.8",
+  "version": "1.2.4-enterprise.9",
   "description": "ProofAgent Guardrail Enterprise for Claude Code: every prompt, tool call and tool result is checked by your company's own guardrail server, under your company's policies. Personal data is masked before Claude sees it and filled back in on your machine. Nothing is sent to ProofAgent's cloud.",
   "author": {
     "name": "ProofAgent",
