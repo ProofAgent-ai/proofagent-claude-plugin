@@ -17,7 +17,7 @@ type Decision = { action?: string; reason?: string; use_this?: unknown; findings
 /** The findings, wherever the server put them: at the top of the answer (this edition's server) or under `result`. */
 export const findingsOf = (d: Decision | null): Finding[] | undefined => d?.findings ?? d?.result?.findings
 type Finding = { kind?: string; family?: string; subfamily?: string; start?: number; end?: number; action?: string }
-type Conn = { url: string; key: string; server: string; mode?: string }
+type Conn = { url: string; key: string; server: string; mode?: string; session?: string }
 
 const TOKEN = /\[[A-Z][A-Z_]*(?::[A-Z][A-Z_]*)?#\d+\]/g
 // The Claude app's own tools for running the session (task list, next-step box, sub-sessions, questions to the user, plans).
@@ -155,6 +155,7 @@ async function saveTable($: any, sid: string, table: Table): Promise<void> {
 /** One check, with one immediate retry when it could not run: a restart or a busy moment should not stop the work. */
 async function ask($: any, c: Conn, tool: string, args: Record<string, unknown>): Promise<Decision | null> {
   if (c.mode) args = { ...args, mode: c.mode }
+  if (c.session) args = { ...args, session: c.session } // lets the admin find every incident from one conversation
   let d = await call($, c, tool, args)
   if (!d || d.action === 'NOT_CHECKED') d = (await call($, c, tool, args)) ?? d
   // went ahead, and was reported to the organization (warn mode, or an exception set to notify)
@@ -213,7 +214,7 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     const t = await loadTable($)
-    sid = t.sid; byToken = { ...(t.table.byToken ?? {}) }; counter = { ...(t.table.counter ?? {}) }
+    sid = t.sid; c.session = sid; byToken = { ...(t.table.byToken ?? {}) }; counter = { ...(t.table.counter ?? {}) }
     byValue = Object.fromEntries(Object.entries(byToken).map(([k, v]) => [v, k])); saved = Object.keys(byToken).length
     // The connector is found on the first check, not here: waiting for it would hold up the session's start.
     await $.command.register({ name: 'proofagent', description: 'ProofAgent: "off" pauses checks for this session, "on" resumes' })
